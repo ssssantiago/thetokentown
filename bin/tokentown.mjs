@@ -242,7 +242,7 @@ if (!summary.totalTokens) {
   process.exit(0);
 }
 
-const site = (valueAfter("--site") || process.env.TOKENTOWN_SITE_URL || "https://tokentown.dev").replace(/\/$/, "");
+const site = (valueAfter("--site") || process.env.TOKENTOWN_SITE_URL || "https://token-town.santitiago.chatgpt.site").replace(/\/$/, "");
 const claimUrl = `${site}/claim#${encodeClaim(summary)}`;
 console.log(`  Your building is ready:\n  \x1b[4m${site}/claim\x1b[0m\n`);
 if (!argv.has("--no-open")) openBrowser(claimUrl);

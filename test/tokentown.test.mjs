@@ -52,3 +52,9 @@ test("demo output has a stable public-only schema", () => {
   assert.ok(summary.totalTokens > 0);
   assert.ok(summary.daily.every((day) => Object.keys(day).sort().join(",") === "date,tokens"));
 });
+
+test("opens claims on the live TokenTown site by default", () => {
+  const result = spawnSync(process.execPath, [cli.pathname, "--demo", "--no-open"], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /https:\/\/token-town\.santitiago\.chatgpt\.site\/claim/);
+});

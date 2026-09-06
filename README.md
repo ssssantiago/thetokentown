@@ -8,8 +8,10 @@ Turn your last 90 days of AI coding into a building in [TokenTown](https://token
 - Lights on = coding within the last 10 minutes
 
 ```bash
-npx tokentown
+npx github:ssssantiago/tokentown
 ```
+
+The GitHub invocation is temporary while the final npm package name is selected.
 
 The zero-dependency CLI reads local logs from Claude Code and Codex. Cursor activity is supported when a compatible stop hook writes its usage log.
 
