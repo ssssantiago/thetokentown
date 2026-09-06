@@ -34,8 +34,10 @@ jobs:
 
       - name: String rule (thetokentown is the only form)
         run: |
-          if git grep -nIioE '(^|[^e])tokentown' -- . ':!pnpm-lock.yaml' ':!docs/SPEC.md' | grep -viE 'thetokentown'; then
-            echo "::error::found a bare 'tokentown' — the only allowed form is 'thetokentown'"
+          # The bracket stops this workflow from matching its own pattern.
+          # docs/SPEC.md is exempt: it has to name the old repo and this check.
+          if git grep -nIioE '(^|[^e])[t]okentown' -- . ':!pnpm-lock.yaml' ':!docs/SPEC.md' | grep -viE 'thetokentown'; then
+            echo "::error::found a bare token-town spelling; the only allowed form is thetokentown"
             exit 1
           fi
-          echo "ok: no bare 'tokentown'"
+          echo "ok: no bare spelling found"
