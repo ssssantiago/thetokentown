@@ -16,7 +16,7 @@ const valueAfter = (flag) => {
 };
 
 if (argv.has("--help") || argv.has("-h")) {
-  console.log(`tokentown ${VERSION}\n\nUsage:\n  npx tokentown              scan and open your claim\n  npx tokentown --json       print the aggregate only\n  npx tokentown --no-open    do not open a browser\n  npx tokentown --demo       use safe demo data\n\nOptions:\n  --since <days>             activity window (default: 90)\n  --site <url>               TokenTown site URL\n  --help                     show this help\n  --version                  print the version\n\nPrivacy: only aggregate token counts, dates, tool names and project count\nare included in a claim. Prompts, responses, file names and code are never sent.`);
+  console.log(`thetokentown ${VERSION}\n\nUsage:\n  npx thetokentown              scan and open your claim\n  npx thetokentown --json       print the aggregate only\n  npx thetokentown --no-open    do not open a browser\n  npx thetokentown --demo       use safe demo data\n\nOptions:\n  --since <days>                activity window (default: 90)\n  --site <url>                  The Token Town site URL\n  --help                        show this help\n  --version                     print the version\n\nPrivacy: only aggregate token counts, dates, tool names and project count\nare included in a claim. Prompts, responses, file names and code are never sent.`);
   process.exit(0);
 }
 if (argv.has("--version") || argv.has("-v")) {
@@ -217,7 +217,7 @@ const codexHomes = process.env.CODEX_HOME
   ? [process.env.CODEX_HOME.replace(/^~/, home)]
   : [join(home, ".codex")];
 const codexRoots = codexHomes.flatMap((root) => [join(root, "sessions"), join(root, "archived_sessions")]);
-const cursorLog = (process.env.TOKENTOWN_CURSOR_LOG || join(home, ".cursor", "token-usage", "usage.jsonl")).replace(/^~/, home);
+const cursorLog = (process.env.THETOKENTOWN_CURSOR_LOG || join(home, ".cursor", "token-usage", "usage.jsonl")).replace(/^~/, home);
 
 let events;
 let projectSets;
@@ -235,14 +235,14 @@ if (argv.has("--json")) {
 }
 
 const sourceLines = summary.sources.length ? summary.sources.map((source) => `  \x1b[32m✓\x1b[0m ${source.name.padEnd(14)} \x1b[33m${formatTokens(source.tokens).padStart(8)}\x1b[0m`).join("\n") : "  No Claude Code or Codex usage found in this window.";
-console.log(`\n\x1b[38;2;216;255;69m  ╔══════════════════════════════╗\n  ║          TOKEN TOWN          ║\n  ╚══════════════════════════════╝\x1b[0m\n\n  LAST ${String(days).padStart(3)} DAYS\n${sourceLines}\n\n  \x1b[1m${formatTokens(summary.totalTokens)}\x1b[0m tokens · ${summary.activeDays} active days · ${summary.projectCount} projects\n  ${summary.live ? "\x1b[38;2;216;255;69m● LIGHTS ON — coding now\x1b[0m" : "○ lights off"}\n`);
+console.log(`\n\x1b[38;2;216;255;69m  ╔══════════════════════════════╗\n  ║        THE TOKEN TOWN        ║\n  ╚══════════════════════════════╝\x1b[0m\n\n  LAST ${String(days).padStart(3)} DAYS\n${sourceLines}\n\n  \x1b[1m${formatTokens(summary.totalTokens)}\x1b[0m tokens · ${summary.activeDays} active days · ${summary.projectCount} projects\n  ${summary.live ? "\x1b[38;2;216;255;69m● LIGHTS ON — coding now\x1b[0m" : "○ lights off"}\n`);
 
 if (!summary.totalTokens) {
-  console.log("  TokenTown only reads local aggregate usage. Try --demo to preview a building.\n");
+  console.log("  The Token Town only reads local aggregate usage. Try --demo to preview a building.\n");
   process.exit(0);
 }
 
-const site = (valueAfter("--site") || process.env.TOKENTOWN_SITE_URL || "https://token-town.santitiago.chatgpt.site").replace(/\/$/, "");
+const site = (valueAfter("--site") || process.env.THETOKENTOWN_SITE_URL || "https://the-token-town.santitiago.chatgpt.site").replace(/\/$/, "");
 const claimUrl = `${site}/claim#${encodeClaim(summary)}`;
 console.log(`  Your building is ready:\n  \x1b[4m${site}/claim\x1b[0m\n`);
 if (!argv.has("--no-open")) openBrowser(claimUrl);

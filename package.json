@@ -1,10 +1,10 @@
 {
-  "name": "tokentown",
+  "name": "thetokentown",
   "version": "0.1.0",
-  "description": "Turn your last 90 days of AI coding into a building in TokenTown.",
+  "description": "Turn your last 90 days of AI coding into a building in The Token Town.",
   "type": "module",
   "bin": {
-    "tokentown": "./bin/tokentown.mjs"
+    "thetokentown": "./bin/thetokentown.mjs"
   },
   "files": [
     "bin",
@@ -25,8 +25,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ssssantiago/tokentown.git"
+    "url": "git+https://github.com/ssssantiago/thetokentown.git"
   },
-  "homepage": "https://github.com/ssssantiago/tokentown#readme",
-  "bugs": "https://github.com/ssssantiago/tokentown/issues"
+  "homepage": "https://github.com/ssssantiago/thetokentown#readme",
+  "bugs": "https://github.com/ssssantiago/thetokentown/issues"
 }

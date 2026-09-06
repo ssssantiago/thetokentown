@@ -5,10 +5,10 @@ import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-const cli = new URL("../bin/tokentown.mjs", import.meta.url);
+const cli = new URL("../bin/thetokentown.mjs", import.meta.url);
 
 test("aggregates and de-duplicates Claude Code and Codex events", () => {
-  const root = mkdtempSync(join(tmpdir(), "tokentown-cli-"));
+  const root = mkdtempSync(join(tmpdir(), "the-token-town-cli-"));
   const claude = join(root, "claude", "projects", "project-alpha");
   const codex = join(root, "codex", "sessions", "2026", "09", "06");
   const cursor = join(root, "cursor", "usage.jsonl");
@@ -27,7 +27,7 @@ test("aggregates and de-duplicates Claude Code and Codex events", () => {
 
   const result = spawnSync(process.execPath, [cli.pathname, "--json"], {
     encoding: "utf8",
-    env: { ...process.env, CLAUDE_CONFIG_DIR: join(root, "claude"), CODEX_HOME: join(root, "codex"), TOKENTOWN_CURSOR_LOG: cursor },
+    env: { ...process.env, CLAUDE_CONFIG_DIR: join(root, "claude"), CODEX_HOME: join(root, "codex"), THETOKENTOWN_CURSOR_LOG: cursor },
   });
   assert.equal(result.status, 0, result.stderr);
   const summary = JSON.parse(result.stdout);
@@ -53,8 +53,8 @@ test("demo output has a stable public-only schema", () => {
   assert.ok(summary.daily.every((day) => Object.keys(day).sort().join(",") === "date,tokens"));
 });
 
-test("opens claims on the live TokenTown site by default", () => {
+test("opens claims on the live The Token Town site by default", () => {
   const result = spawnSync(process.execPath, [cli.pathname, "--demo", "--no-open"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /https:\/\/token-town\.santitiago\.chatgpt\.site\/claim/);
+  assert.match(result.stdout, /https:\/\/the-token-town\.santitiago\.chatgpt\.site\/claim/);
 });
