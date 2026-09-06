@@ -160,10 +160,13 @@ test("the day list is capped", () => {
 });
 
 test("the building slug must match ^[a-z0-9-]{1,20}$", () => {
-  for (const building of ["main", "work", "a", "a-b-c", "0123456789-0123456789"]) {
+  const twenty = "0123456789-012345678";
+  assert.equal(twenty.length, 20, "the boundary fixture must really be 20 characters");
+
+  for (const building of ["main", "work", "a", "a-b-c", twenty]) {
     assert.equal(schema.safeParse(snapshot({ building })).success, true, building);
   }
-  for (const building of ["", "Main", "with space", "acento-é", "0123456789-01234567890", "a/b"]) {
+  for (const building of ["", "Main", "with space", "acento-é", `${twenty}9`, "a/b", "a_b"]) {
     assert.equal(schema.safeParse(snapshot({ building })).success, false, JSON.stringify(building));
   }
 });

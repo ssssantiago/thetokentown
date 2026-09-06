@@ -56,5 +56,5 @@ test("demo output has a stable public-only schema", () => {
 test("opens claims on the live The Token Town site by default", () => {
   const result = spawnSync(process.execPath, [cli.pathname, "--demo", "--no-open"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /https:\/\/the-token-town\.santitiago\.chatgpt\.site\/claim/);
+  assert.match(result.stdout, /https:\/\/thetokentown\.dev\/claim/);
 });
