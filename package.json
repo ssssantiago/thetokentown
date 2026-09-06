@@ -1,0 +1,32 @@
+{
+  "name": "tokentown",
+  "version": "0.1.0",
+  "description": "Turn your last 90 days of AI coding into a building in TokenTown.",
+  "type": "module",
+  "bin": {
+    "tokentown": "./bin/tokentown.mjs"
+  },
+  "files": [
+    "bin",
+    "LICENSE",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": ["claude-code", "codex", "tokens", "developer-tools", "visualization"],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ssssantiago/tokentown.git"
+  },
+  "homepage": "https://github.com/ssssantiago/tokentown#readme",
+  "bugs": "https://github.com/ssssantiago/tokentown/issues"
+}
