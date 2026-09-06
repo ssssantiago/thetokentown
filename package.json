@@ -4,7 +4,7 @@
   "description": "Turn your last 90 days of AI coding into a building in The Token Town.",
   "type": "module",
   "bin": {
-    "thetokentown": "./bin/thetokentown.mjs"
+    "thetokentown": "bin/thetokentown.mjs"
   },
   "files": [
     "bin",
@@ -18,7 +18,13 @@
   "engines": {
     "node": ">=20"
   },
-  "keywords": ["claude-code", "codex", "tokens", "developer-tools", "visualization"],
+  "keywords": [
+    "claude-code",
+    "codex",
+    "tokens",
+    "developer-tools",
+    "visualization"
+  ],
   "license": "MIT",
   "publishConfig": {
     "access": "public"
