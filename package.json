@@ -1,38 +1,24 @@
 {
-  "name": "thetokentown",
-  "version": "0.1.0",
-  "description": "Turn your last 90 days of AI coding into a building in The Token Town.",
+  "name": "thetokentown-monorepo",
+  "version": "0.0.0",
+  "private": true,
   "type": "module",
-  "bin": {
-    "thetokentown": "bin/thetokentown.mjs"
-  },
-  "files": [
-    "bin",
-    "LICENSE",
-    "README.md",
-    "THIRD_PARTY_NOTICES.md"
-  ],
-  "scripts": {
-    "test": "node --test test/*.test.mjs"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "keywords": [
-    "claude-code",
-    "codex",
-    "tokens",
-    "developer-tools",
-    "visualization"
-  ],
+  "description": "The Token Town — monorepo for the open-source CLI, core and source adapters.",
   "license": "MIT",
-  "publishConfig": {
-    "access": "public"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ssssantiago/thetokentown.git"
   },
-  "homepage": "https://github.com/ssssantiago/thetokentown#readme",
-  "bugs": "https://github.com/ssssantiago/thetokentown/issues"
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
 }

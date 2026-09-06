@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.18", "24"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: String rule (thetokentown is the only form)
+        run: |
+          if git grep -nIioE '(^|[^e])tokentown' -- . ':!pnpm-lock.yaml' ':!docs/SPEC.md' | grep -viE 'thetokentown'; then
+            echo "::error::found a bare 'tokentown' — the only allowed form is 'thetokentown'"
+            exit 1
+          fi
+          echo "ok: no bare 'tokentown'"

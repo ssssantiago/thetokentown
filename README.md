@@ -1,44 +1,39 @@
-# The Token Town CLI
+# The Token Town
 
-Turn your last 90 days of AI coding into a building in [The Token Town](https://the-token-town.santitiago.chatgpt.site).
-
-- Building height = tokens used
-- Windows = active coding days
-- Footprint = projects
-- Lights on = coding within the last 10 minutes
+Your last 90 days of AI coding, built into a living city.
+Height = what you built. Lights on = synced in the last 30 minutes.
 
 ```bash
 npx thetokentown
 ```
 
-The zero-dependency CLI reads local logs from Claude Code and Codex. Cursor activity is supported when a compatible stop hook writes its usage log.
+This is the open-source monorepo. The hosted web app lives in a separate private
+repository.
 
-It never includes prompt text, responses, file contents, file names, repository names, or code in the claim. The payload contains only daily token totals, tool names, number of projects, and the most recent activity timestamp.
-
-Cursor no longer keeps complete historical token totals in its standard local database. The Token Town detects the append-only `~/.cursor/token-usage/usage.jsonl` format created by Cursor stop hooks; this tracks activity after the hook is installed and cannot backfill earlier sessions.
-
-Use `npx thetokentown --json` to inspect the exact aggregate before opening a claim. No API keys are required.
-
-## Options
-
-```text
---json          print the aggregate without opening a claim
---demo          preview The Token Town with safe demo data
---no-open       do not open a browser
---since <days>  change the activity window (default: 90)
---site <url>    override The Token Town site URL
-```
+| Package | What it is |
+|---|---|
+| [`packages/cli`](./packages/cli) | The `thetokentown` CLI. Reads local usage, sends only aggregates. |
+| [`packages/core`](./packages/core) | Types, validation, pricing, 90-day aggregation, and the building formulas. |
+| `packages/sources` | Per-tool loaders (Claude Code, Codex, Grok, Cursor). |
+| `fixtures/` | Anonymized session fixtures per source. |
 
 ## Development
 
+Requires Node.js 22.18 or newer and pnpm 10.
+
 ```bash
-npm install
-npm test
-node bin/thetokentown.mjs --demo --no-open
+pnpm install
+pnpm check      # typecheck + test
 ```
 
-The hosted product is proprietary and is not part of this repository. This repository contains only the open-source local CLI.
+## Privacy
 
-Token parsing follows the data-loading behavior of [ccusage](https://github.com/ryoppippi/ccusage), with attribution preserved in [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
+The CLI never reads or transmits prompts, responses, code, file paths, or project
+names. Only per-day, per-provider, per-model numeric aggregates leave the machine.
+Run `npx thetokentown --json` to see the exact payload before anything is sent.
+
+Loader behavior for Claude Code, Codex and Grok is adapted from
+[ccusage](https://github.com/ryoppippi/ccusage); see
+[`packages/cli/THIRD_PARTY_NOTICES.md`](./packages/cli/THIRD_PARTY_NOTICES.md).
 
 MIT © 2026 Santiago

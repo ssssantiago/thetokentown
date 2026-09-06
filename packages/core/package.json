@@ -1,0 +1,26 @@
+{
+  "name": "@thetokentown/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Types, validation, pricing and the building formulas for The Token Town.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./pricing.json": "./pricing.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "typescript": "5.9.3"
+  }
+}

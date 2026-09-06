@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "currency": "USD",
+    "unit": "per 1,000,000 tokens",
+    "updated": "2026-09-06",
+    "warning": "PLACEHOLDER PRICES. These have not been verified against the providers' published price lists. Verify every row before the first real publish; the CLI also fetches https://thetokentown.dev/pricing.json (24h cache), so corrections ship without a CLI release."
+  },
+  "_blended": {
+    "derivedFrom": "claude-sonnet-4-5",
+    "formula": "(input + output) / 2, converted to USD per single token",
+    "default": 0.000009
+  },
+  "models": {
+    "claude-opus-4-1": { "input": 15, "output": 75, "cacheWrite": 18.75, "cacheRead": 1.5 },
+    "claude-opus-4": { "input": 15, "output": 75, "cacheWrite": 18.75, "cacheRead": 1.5 },
+    "claude-sonnet-4-5": { "input": 3, "output": 15, "cacheWrite": 3.75, "cacheRead": 0.3 },
+    "claude-sonnet-4": { "input": 3, "output": 15, "cacheWrite": 3.75, "cacheRead": 0.3 },
+    "claude-haiku-4-5": { "input": 1, "output": 5, "cacheWrite": 1.25, "cacheRead": 0.1 },
+    "claude-3-5-haiku": { "input": 0.8, "output": 4, "cacheWrite": 1, "cacheRead": 0.08 },
+    "gpt-5-codex": { "input": 1.25, "output": 10, "cacheWrite": 1.25, "cacheRead": 0.125 },
+    "gpt-5-mini": { "input": 0.25, "output": 2, "cacheWrite": 0.25, "cacheRead": 0.025 },
+    "gpt-5": { "input": 1.25, "output": 10, "cacheWrite": 1.25, "cacheRead": 0.125 },
+    "o3": { "input": 2, "output": 8, "cacheWrite": 2, "cacheRead": 0.5 },
+    "grok-code-fast-1": { "input": 0.2, "output": 1.5, "cacheWrite": 0.2, "cacheRead": 0.02 },
+    "grok-4": { "input": 3, "output": 15, "cacheWrite": 3, "cacheRead": 0.75 }
+  }
+}
