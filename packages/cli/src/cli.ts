@@ -17,6 +17,7 @@ import { spawn } from "node:child_process";
 import type { DailyUsage, Snapshot } from "@thetokentown/core/types";
 import { WINDOW_DAYS, floorsForCost } from "@thetokentown/core/metrics";
 import { aggregate } from "@thetokentown/core/aggregate";
+import { createPricer } from "@thetokentown/core/pricing";
 import type { ScanResult } from "@thetokentown/sources";
 import {
   createFsReader,
@@ -137,6 +138,13 @@ function demoDaily(): DailyUsage[] {
       sessions: 1 + (day % 3),
     });
   }
+
+  // Price the demo the same way a real scan is priced, so the preview shows a
+  // building instead of a one-floor stub.
+  const pricer = createPricer();
+  for (const row of rows) {
+    row.costUsd = pricer.cost(row.model, row);
+  }
   return rows.sort((a, b) => a.day.localeCompare(b.day));
 }
 
@@ -201,6 +209,7 @@ if (argv.has("--json")) {
 // ---------------------------------------------------------------- summary
 
 const stats = aggregate(daily, { now: Date.now(), lastSyncAt: null });
+const floors = floorsForCost(stats.cost90d);
 
 const byProvider = new Map<string, { tokens: number; cost: number }>();
 for (const row of daily) {

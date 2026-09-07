@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import pricingJson from "../pricing.json" with { type: "json" };
+import pricingJson from "../src/pricing.json" with { type: "json" };
 import {
   BUNDLED_PRICING,
   CURSOR_TOKENS_PER_TURN,

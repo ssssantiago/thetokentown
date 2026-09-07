@@ -55,7 +55,7 @@ servers, so the payload only ever reaches the page after you have signed in.
 The dollar figure is **value built at API pricing**: tokens × the provider's
 published per-token rate. Most people are on a flat plan, so it is not a bill —
 it is a comparable measure of how much was built. Raw tokens are always shown
-next to it. Rates live in [`pricing.json`](../core/pricing.json); every row
+next to it. Rates live in [`pricing.json`](../core/src/pricing.json); every row
 cites the official page it came from and the date it was checked.
 
 Grok reports its own cost and that is used verbatim. Cursor, if it is ever

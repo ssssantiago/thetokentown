@@ -15,7 +15,8 @@
   "scripts": {
     "build": "esbuild src/cli.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/thetokentown.mjs --banner:js=\"#!/usr/bin/env node\" && chmod +x dist/thetokentown.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepack": "npm run build"
   },
   "engines": {
     "node": ">=20"

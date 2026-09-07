@@ -71,11 +71,11 @@ Dois repos locais, feitos contra uma versão antiga da spec:
 
 ## 2. Escopo V1
 
-**Entra:** CLI (TS, Node ≥ 20); fontes Claude Code, Codex CLI, Grok CLI, Cursor; claim por fragmento; auto-update via hooks + carona; cidade única global; prédio por pessoa **ou** por máquina; janela de 90 dias para altura; idade do prédio visível de outro jeito; luzes por sync; rachaduras por abandono; `/b/<handle>`; OG PNG; embed SVG; i18n en/pt-BR; GitHub OAuth + device flow (só pro token de hook); perfil (cidade, link, mostrar custo); número de cidadão sequencial.
+**Entra:** CLI (TS, Node ≥ 20); fontes Claude Code, Codex CLI, Grok CLI; claim por fragmento; auto-update via hooks + carona; cidade única global; prédio por pessoa **ou** por máquina; janela de 90 dias para altura; idade do prédio visível de outro jeito; luzes por sync; rachaduras por abandono; `/b/<handle>`; OG PNG; embed SVG; i18n en/pt-BR; GitHub OAuth + device flow (só pro token de hook); perfil (cidade, link, mostrar custo); número de cidadão sequencial.
 
 **Embed SVG para README** (`GET /e/<handle>[/<slug>][.svg]`, 600×200, cache 1 h, tema dark, mostra prédio + andares + citizen_no + luz). É o loop de crescimento passivo — GitCity ganha 300 usuários/dia por causa disso.
 
-**Não entra (V2):** bairros por país/linguagem, comparação lado a lado, cidade por empresa, ranking paginado, **`~/.opencode` como fonte 5**, Gemini/Windsurf/outros, newsletter, tema claro.
+**Não entra (V2):** **Cursor — pendente de o Cursor gravar contagem de tokens localmente** (ver §6 e `packages/sources/src/scanners/NOTES.md`); bairros por país/linguagem, comparação lado a lado, cidade por empresa, ranking paginado, **`~/.opencode` como fonte 5**, Gemini/Windsurf/outros, newsletter, tema claro.
 
 ## 3. Repositório
 
@@ -235,7 +235,7 @@ Cada degrau tem aparência distinta na cidade; o visual é o upsell, não há ta
 |---|---|---|---|---|
 | **0 · Reservar** | 30 s | Login GitHub em `/join`. Zero dado. | Lote vazio na espiral com placa "reservado por @handle · Citizen #N" | Não entra em ranking nem contadores de prédio; embed mostra a placa |
 | **1 · Reivindicar** | 60 s | `npx thetokentown` → abre `/claim#<snapshot>` → login GitHub → pronto | Prédio real, altura e idade reais | **Estático** até instalar hooks: `lights_on` false, sem guindaste; decay conta do último claim |
-| **1b · Arrastar** | 2 min | `/build`: arrastar `~/.claude/projects`, `~/.codex/sessions`, `~/.grok/sessions`. Parse **no browser** (Web Worker). | Igual ao 1 | Igual ao 1. Cursor não suportado neste degrau |
+| **1b · Arrastar** | 2 min | `/build`: arrastar `~/.claude/projects`, `~/.codex/sessions`, `~/.grok/sessions`. Parse **no browser** (Web Worker). | Igual ao 1 | Igual ao 1 |
 | **2 · Instalar** | 5 min | `thetokentown install` → device flow → hooks | Prédio vivo: luzes, guindaste, decay zerado a cada sync | — |
 
 Regras:
@@ -292,7 +292,7 @@ Interface `Source { id, detect(), scan(state), installHook(), uninstallHook() }`
 - **claude** — loader ccusage. `~/.claude/projects/`, `~/.config/claude/projects/`, `CLAUDE_CONFIG_DIR`. `type: "assistant"` com `message.usage`; dedup por `message.id + requestId`. **Quando não dá pra montar a chave (falta `message.id` ou falta `requestId`), a linha é processada uma vez, sem dedup** — igual ao ccusage. Nunca cair pra uma chave sintética tipo `arquivo:linha`: ela é única por construção e faz o dedup virar no-op em silêncio, que é pior que não deduplicar de forma declarada. A contagem dessas linhas é exposta como `undedupedLines` no `--json` e no `Snapshot`, pra transparência.
 - **codex** — loader `@ccusage/codex`. `~/.codex/sessions/`, `~/.codex/archived_sessions/`, `CODEX_HOME`. Delta de `total_token_usage` cumulativo (o CLI antigo já faz isso e está certo).
 - **grok** — `$GROK_HOME/sessions/<cwd-url-encoded>/<uuid>/updates.jsonl`, só `sessionUpdate === "turn_completed"`; custo `costUsdTicks / 1e10`, usado verbatim (nota fiscal ganha de estimativa). `inputTokens` **já inclui** cache, então `cachedReadTokens` e `cacheCreationTokens` são subtraídos de volta; `reasoningTokens` é subconjunto de output e não soma. **Sem dado real do autor**: fixture escrita a partir do formato documentado pelo ccusage; README e `fixtures/README.md` marcam "community-tested".
-- **cursor** — investigado em 06/09/2026 contra o Cursor 3.19.13; **`detect()` é `false`**. O `state.vscdb` foi copiado pra tmp com os sidecars `-wal`/`-shm` e aberto read-only: os registros `bubbleId:*` têm `createdAt`, `modelInfo.modelName` e `tokenCount`, mas o `tokenCount` é `{inputTokens: 0, outputTokens: 0}` em 7.691 de 7.697 mensagens, e `composerData.usageData` é `{}` nas 64 conversas. Não há o que ler. O caminho alternativo, `~/.cursor/token-usage/usage.jsonl`, depende de um stop hook que ninguém instala ainda (§7, tarefa 10) e nunca faz backfill. Apuração completa em `packages/sources/src/scanners/NOTES.md`. **Resolve a questão do cache:** `tokenCount` tem exatamente dois membros, sem nenhum campo de cache em nenhum registro — se o Cursor voltar a escrever números, `tokens = input + output`, `cacheRead = cacheWrite = 0`, custo estimado (§5.3).
+- **cursor — FORA DA V1, movido pra V2 "pendente de o Cursor gravar contagem de tokens localmente".** Investigado em 06/09/2026 contra o Cursor 3.19.13; **`detect()` é `false`**. O `state.vscdb` foi copiado pra tmp com os sidecars `-wal`/`-shm` e aberto read-only: os registros `bubbleId:*` têm `createdAt`, `modelInfo.modelName` e `tokenCount`, mas o `tokenCount` é `{inputTokens: 0, outputTokens: 0}` em 7.691 de 7.697 mensagens, e `composerData.usageData` é `{}` nas 64 conversas. Não há o que ler. O caminho alternativo, `~/.cursor/token-usage/usage.jsonl`, depende de um stop hook que ninguém instala ainda (§7, tarefa 10) e nunca faz backfill. Apuração completa em `packages/sources/src/scanners/NOTES.md`. **Resolve a questão do cache:** `tokenCount` tem exatamente dois membros, sem nenhum campo de cache em nenhum registro — se o Cursor voltar a escrever números, `tokens = input + output`, `cacheRead = cacheWrite = 0`, custo estimado (§5.3).
 
 **Pricing:** `pricing.json` embutido + fetch `thetokentown.dev/pricing.json` (cache 24 h). Match exato → sem sufixo de data → prefixo. Desconhecido: custo 0 + warning uma vez. Chave `_blended.default` pra taxa do Cursor.
 
@@ -304,10 +304,9 @@ Interface `Source { id, detect(), scan(state), installHook(), uninstallHook() }`
 |---|---|---|
 | Claude Code | `~/.claude/settings.json` → `hooks` | `Stop`, `SessionEnd`: `{ "type":"command", "command":"<abs>/thetokentown sync --hook", "async":true, "timeout":10 }` (`--flush` no SessionEnd) |
 | Codex CLI | `~/.codex/config.toml` → `notify` | `notify = ["<abs>/thetokentown","sync","--hook"]`; se já existe notify, wrapper `~/.thetokentown/bin/codex-notify.sh` chama ambos |
-| Cursor | `~/.cursor/hooks.json` → `stop`, `sessionEnd` | `{ "command": "<abs>/thetokentown sync --hook" }` |
 | Grok CLI | sem hook confirmado | `launchd`/`cron` 15 min **só se** Grok é a única fonte; senão carona |
 
-Regras: path absoluto (nunca `npx` em hook); merge cirúrgico identificando nossas entradas por substring `thetokentown sync`; backup `*.bak.thetokentown`; arquivo que não parseia → não tocar, avisar; `sync --hook` lê stdin com timeout 200 ms, respeita `stop_hook_active`, throttle em `~/.thetokentown/last-sync`, `AbortSignal.timeout(3000)`, falha → `queue.json`, log rotativo 1 MB. Mensagem final: "reinicie Claude Code / Cursor (ou `/hooks`)".
+Regras: path absoluto (nunca `npx` em hook); merge cirúrgico identificando nossas entradas por substring `thetokentown sync`; backup `*.bak.thetokentown`; arquivo que não parseia → não tocar, avisar; `sync --hook` lê stdin com timeout 200 ms, respeita `stop_hook_active`, throttle em `~/.thetokentown/last-sync`, `AbortSignal.timeout(3000)`, falha → `queue.json`, log rotativo 1 MB. Mensagem final: "reinicie Claude Code (ou `/hooks`)". O hook do Cursor (`~/.cursor/hooks.json` → `stop`, `sessionEnd`) já está desenhado e volta com a fonte, na V2.
 
 ## 8. API
 
@@ -400,7 +399,8 @@ Three.js, ortográfica isométrica, `InstancedMesh` por (provider, tier de facha
 - [ ] Teste automatizado: snapshot serializado não contém `/`, `~`, `Users`, `home`, `@`.
 - [ ] `GET /e/<handle>.svg` **e** `GET /e/<handle>` devolvem 200 com o mesmo SVG.
 - [ ] OG é PNG e renderiza no X e no Discord, nos dois idiomas.
-- [ ] Prédio com camada de Cursor mostra `*` e "estimated" em card, OG, embed e `/b/`.
+- [ ] `/how` diz, nos dois idiomas, que o Cursor está fora da V1 porque o Cursor não grava contagem de tokens localmente.
+- [ ] Prédio com qualquer camada estimada mostra `*` e "estimated" em card, OG, embed e `/b/`.
 - [ ] Usuário com 2 prédios: mesmo `Citizen #N` nos dois, com "building 1 of 2" e "building 2 of 2".
 - [ ] Cidade com 0, 1, 5, 60, 5000 prédios parece intencional. Nenhum handle de pessoa real em dado fake.
 - [ ] Prédio com 2 máquinas no mesmo slug não dobra tokens.
@@ -417,9 +417,9 @@ Three.js, ortográfica isométrica, `InstancedMesh` por (provider, tier de facha
 - Preparar 3 GIFs noturnos de 8 s: (a) luzes acendendo em ondas conforme a hora do dia, (b) guindastes em prédios em construção, (c) zoom num prédio de camadas Claude+Codex. Cada um em en e pt-BR.
 
 **Seg 14/set — lançamento, construído pra provocar QT oficial:**
-- Tuíte principal **da conta pessoal do Santiago** (@thetokentown só dá RT e responde) em inglês marcando @claudeai / @cursor_ai / @OpenAIDevs com o GIF (a). Texto: "Every dev is a building. Height = what you built with AI in the last 90 days. Lights on = coding right now. `npx thetokentown`". Um tuíte, três contas marcadas, sem thread.
+- Tuíte principal **da conta pessoal do Santiago** (@thetokentown só dá RT e responde) em inglês marcando @claudeai / @OpenAIDevs / @xai com o GIF (a). Texto: "Every dev is a building. Height = what you built with AI in the last 90 days. Lights on = coding right now. `npx thetokentown`". Um tuíte, três contas marcadas, sem thread.
 - Versão pt-BR 30 min depois, marcando o Samuel (com a DM já respondida ou não).
-- Reddit r/ClaudeAI, r/cursor, r/codex; Discord do Claude Code.
+- Reddit r/ClaudeAI, r/codex, r/grok; Discord do Claude Code.
 - Reply próprio no tuíte com o embed do README: "add your building to your GitHub profile" + snippet apontando pra `/e/<handle>.svg`.
 
 **Ter:** Product Hunt. Post agradecendo @ryoppippi (ccusage) — o CLI vendora os loaders dele; crédito público é honesto e o público dele é o seu.

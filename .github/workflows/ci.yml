@@ -26,11 +26,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Build
+        run: pnpm build
+
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Test
-        run: pnpm test
+        run: pnpm -r --if-present test
 
       - name: Fixtures match their manifest
         run: node scripts/anonymize-fixtures.mjs --check

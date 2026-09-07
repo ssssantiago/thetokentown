@@ -1,6 +1,6 @@
 /** Model pricing and cost derivation. See docs/SPEC.md §5.3 and §6 (Pricing). */
 
-import pricingJson from "../pricing.json" with { type: "json" };
+import pricingJson from "./pricing.json" with { type: "json" };
 
 /** USD per 1,000,000 tokens. */
 export interface ModelPrice {
