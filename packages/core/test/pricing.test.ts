@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import pricingJson from "../pricing.json" with { type: "json" };
 import {
   BUNDLED_PRICING,
   CURSOR_TOKENS_PER_TURN,
@@ -21,11 +22,44 @@ test("the bundled table loads with a blended rate and no underscore keys", () =>
   }
 });
 
-test("the declared blended rate matches the Sonnet row it claims to come from", () => {
-  const sonnet = BUNDLED_PRICING.models["claude-sonnet-4-5"];
-  assert.ok(sonnet, "the reference model must exist in the table");
-  const derived = (sonnet.input + sonnet.output) / 2 / 1_000_000;
+test("every row cites the page it was read from and the day it was checked", () => {
+  // SPEC §12 task 2b. A row without a source is a number someone invented.
+  const models = pricingJson.models as Record<string, Record<string, unknown>>;
+  const rows = Object.entries(models);
+  assert.ok(rows.length > 0);
+
+  for (const [model, row] of rows) {
+    assert.match(String(row["source"] ?? ""), /^https:\/\//, `${model} has no source URL`);
+    assert.match(String(row["verifiedAt"] ?? ""), /^\d{4}-\d{2}-\d{2}$/, `${model} has no verifiedAt`);
+  }
+
+  const meta = pricingJson._meta as Record<string, unknown>;
+  assert.equal(meta["warning"], undefined, "the placeholder warning must be gone once every row is sourced");
+});
+
+test("the declared blended rate matches the row it claims to come from", () => {
+  const blended = pricingJson._blended as Record<string, unknown>;
+  const reference = BUNDLED_PRICING.models[String(blended["derivedFrom"])];
+  assert.ok(reference, `the reference model ${blended["derivedFrom"]} must exist in the table`);
+  const derived = (reference.input + reference.output) / 2 / 1_000_000;
   assert.equal(BUNDLED_PRICING.blendedUsdPerToken, derived);
+});
+
+test("the models this machine actually uses are all priced", () => {
+  // Observed in ~/.claude and ~/.codex on 2026-09-06. A miss here means the
+  // building is silently short by whatever that model cost.
+  const observed = [
+    "claude-opus-5",
+    "claude-fable-5",
+    "claude-haiku-4-5-20251001",
+    "gpt-5.3-codex",
+    "gpt-5.4",
+    "gpt-5.6-sol",
+    "gpt-5.1-codex-mini",
+  ];
+  for (const model of observed) {
+    assert.ok(resolveModelPrice(model, BUNDLED_PRICING), `${model} resolves to no price`);
+  }
 });
 
 test("model matching goes exact, then dateless, then longest prefix", () => {
@@ -64,8 +98,8 @@ test("rows missing input or output are dropped, and cache falls back to input", 
 });
 
 test("a missing blended rate is derived from the table instead of being zero", () => {
-  const table = loadPricingTable({ models: { "claude-sonnet-4-5": { input: 3, output: 15 } } });
-  assert.equal(table.blendedUsdPerToken, 9 / 1_000_000);
+  const table = loadPricingTable({ models: { "claude-sonnet-5": { input: 2, output: 10 } } });
+  assert.equal(table.blendedUsdPerToken, 6 / 1_000_000);
 
   const empty = loadPricingTable({});
   assert.equal(empty.blendedUsdPerToken, 0, "nothing to derive from");
@@ -93,19 +127,19 @@ test("an unknown model costs 0 and is recorded once for a single warning", () =>
 });
 
 test("Cursor prefers tokens and falls back to turns, always estimated", () => {
-  const table = loadPricingTable({ _blended: { default: 0.000009 }, models: {} });
+  const table = loadPricingTable({ _blended: { default: 0.000006 }, models: {} });
 
-  assert.equal(estimateCursorCostUsd({ tokens: 1_000_000 }, table), 9);
-  assert.equal(estimateCursorCostUsd({ turns: 10 }, table), 10 * CURSOR_TOKENS_PER_TURN * 0.000009);
+  assert.equal(estimateCursorCostUsd({ tokens: 1_000_000 }, table), 6);
+  assert.equal(estimateCursorCostUsd({ turns: 10 }, table), 10 * CURSOR_TOKENS_PER_TURN * 0.000006);
   assert.equal(
     estimateCursorCostUsd({ tokens: 1_000_000, turns: 999 }, table),
-    9,
+    6,
     "tokens win when both are present",
   );
 });
 
 test("Cursor with neither tokens nor turns has no cost at all", () => {
-  const table = loadPricingTable({ _blended: { default: 0.000009 }, models: {} });
+  const table = loadPricingTable({ _blended: { default: 0.000006 }, models: {} });
   assert.equal(estimateCursorCostUsd({}, table), null);
   assert.equal(estimateCursorCostUsd({ tokens: 0, turns: 0 }, table), null);
 });
@@ -113,7 +147,7 @@ test("Cursor with neither tokens nor turns has no cost at all", () => {
 test("an estimated Cursor building is comparable to a priced one", () => {
   // SPEC §5.3: the whole point of the estimate is that both use the same
   // floors formula, so a Cursor-only tower is not a shack next to everyone.
-  const table = loadPricingTable({ _blended: { default: 0.000009 }, models: {} });
+  const table = loadPricingTable({ _blended: { default: 0.000006 }, models: {} });
   const cost = estimateCursorCostUsd({ turns: 500 }, table);
-  assert.ok(cost !== null && cost > 80, `500 turns should be worth real money, got ${cost}`);
+  assert.ok(cost !== null && cost > 50, `500 turns should be worth real money, got ${cost}`);
 });

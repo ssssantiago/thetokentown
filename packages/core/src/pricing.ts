@@ -76,7 +76,7 @@ export function loadPricingTable(raw: unknown): PricingTable {
 
 /** Average of input and output for the reference model, per single token. */
 function fallbackBlendedRate(models: Record<string, ModelPrice>): number {
-  const reference = models["claude-sonnet-4-5"] ?? Object.values(models)[0];
+  const reference = models["claude-sonnet-5"] ?? Object.values(models)[0];
   if (!reference) return 0;
   return (reference.input + reference.output) / 2 / PER_MILLION;
 }

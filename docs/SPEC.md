@@ -209,7 +209,7 @@ O card e a API mostram os dois. "Ontem" entra na sequência corrente porque quem
 
 Não existe mais fórmula alternativa de andares. Cursor entra em USD como todo mundo, com uma taxa combinada e um asterisco:
 
-- **Taxa combinada** (`blendedRate`): derivada da linha do Sonnet em `pricing.json` — `(inputPrice + outputPrice) / 2` por token. Vive em `pricing.json` sob `_blended.default` pra poder ser corrigida sem release do CLI.
+- **Taxa combinada** (`blendedRate`): derivada da linha do Sonnet corrente em `pricing.json` — `(inputPrice + outputPrice) / 2` por token. Hoje é o `claude-sonnet-5` (`(2 + 10) / 2 = 6` por 1M → `0.000006`). Vive em `pricing.json` sob `_blended.default`, com `derivedFrom` ao lado, pra poder ser corrigida sem release do CLI; um teste confere se o valor declarado bate com a derivação que ele mesmo alega.
 - **Cursor com tokens:** `costUsd = tokens × blendedRate`, `costEstimated = true`.
 - **Cursor só com turnos:** `costUsd = turns × 20_000 × blendedRate`, `costEstimated = true`. (20k tokens/turno é o chute declarado; documentar em `NOTES.md`.)
 - **Cursor sem tokens e sem turnos:** `costUsd = null`, a fonte não conta.
@@ -217,6 +217,15 @@ Não existe mais fórmula alternativa de andares. Cursor entra em USD como todo 
 Onde `cost_estimated` é true, toda superfície que mostra o número mostra `*` e a nota **"estimated" / "estimado"** — card, OG, embed, `/b/<handle>`, `/me`. Um prédio com qualquer camada estimada carrega o asterisco.
 
 Motivo: `log2` de turnos dava ~10 andares contra ~70 de quem tem custo real; um prédio 100% Cursor virava barraco ao lado de todo mundo. Estimativa rotulada é mais honesta que escala incomparável.
+
+### 5.4 Pricing conferido (06/09/2026)
+
+Toda linha do `pricing.json` carrega `source` (URL da página oficial) e `verifiedAt`. Fontes: `claude.com/pricing`, `developers.openai.com/api/docs/pricing`, `docs.x.ai/docs/models`.
+
+- **OpenAI e xAI não publicam preço de escrita de cache.** Escrever no cache é cobrado como input comum, então essas linhas têm `cacheWrite = input`. Isso é o comportamento de cobrança, não um chute.
+- **A Anthropic publica os dois** (`cache write` 5 min e `cache read`), copiados literalmente.
+- **A xAI cobra por tamanho de contexto.** As linhas são a faixa < 200k, que é o que uma sessão de CLI é; sessão de contexto longo custa o dobro e a tabela vai sub-reportar.
+- **`gpt-5.1-codex-mini` não existe em nenhuma página oficial** e aparece no `~/.codex` desta máquina. Não foi inventada uma linha pra ele: o casamento por prefixo resolve pra `gpt-5.1`, que é a estimativa mais próxima que dá pra citar uma fonte.
 
 ## 5b. Formas de entrar na Town (três degraus)
 
@@ -353,7 +362,7 @@ Three.js, ortográfica isométrica, `InstancedMesh` por (provider, tier de facha
 |---|---|---|
 | 1 | Monorepo pnpm; renomear `~/tokentown` → `~/thetokentown` e `~/tokentown-web` → `~/thetokentown-web`; mover CLI pra `packages/cli`; renomear `test/tokentown.test.mjs`; CI | 1,5 h |
 | 2 | `packages/core`: tipos v2, zod, `pricing.json` (+ `_blended`), agregação 90d, andares, idade, decay, custo estimado do Cursor. Testes | 2,5 h |
-| 2b | Conferir **cada linha** do `pricing.json` contra a página oficial de preços do provider, com um campo `source` (URL) por linha. Sem isso a altura de todo prédio da cidade está errada | 1 h |
+| 2b | ~~Conferir cada linha do `pricing.json` contra a página oficial~~ **feito 06/09** — toda linha tem `source` + `verifiedAt`; ver §5.4 | — |
 | 3 | Refatorar os scanners atuais pra `packages/sources` com a interface `list/read` abstrata (destrava o `/build` de graça) | 2 h |
 | 4 | claude + codex emitindo `DailyUsage` por provider × model × dia com custo; grok com fixtures do ccusage | 2,5 h |
 | 5 | `apps/web` novo: Next 15 + next-intl (en/pt-BR no primeiro commit), transplantar `globals.css` + `CityExperience.tsx`, câmera ortográfica, `/api/city` fake com 60 prédios variados | 3 h |
