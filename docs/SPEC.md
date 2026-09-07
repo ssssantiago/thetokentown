@@ -318,7 +318,7 @@ Regras: path absoluto (nunca `npx` em hook); merge cirúrgico identificando noss
 | `GET /api/city` | — | prédios públicos + `grid_x/grid_y` + `lightsOn` derivado. `s-maxage=60, swr=300` |
 | `GET /api/buildings/:handle[/:slug]` | — | detalhe público; `costUsd` só se `show_cost` |
 | `GET /api/og/:handle[/:slug]` | — | **PNG** 1200×630 via `@vercel/og` |
-| `GET /e/:handle[/:slug][.svg]` | — | **SVG** 600×200, cache 1 h. Sufixo `.svg` opcional, removido antes de validar o handle |
+| `GET /e/:handle[/:slug].svg` | — | **SVG** 600×200, `s-maxage=3600, swr=86400`. O sufixo `.svg` é **obrigatório** — o GitHub sempre pede com extensão, e deixar o caminho nu livre reserva espaço pra uma página HTML no mesmo endereço depois. O sufixo é removido **antes** de validar o handle (era o bug do Codex, que reprovava o ponto no regex) |
 | `PATCH /api/me` · `POST /api/me/buildings/*` | sessão | perfil, mover máquina, renomear, mesclar |
 | `GET /pricing.json` | — | estático |
 | `GET /api/cron/recalc` | header secreto | Vercel Cron diário: recalcula stats; envia o e-mail "seu prédio começou a rachar" (Resend) pra quem tem `email_opt_in`, `decay_level` acabou de virar 1 e `decay_email_sent_at` é null — um por prédio, nunca repete. Copy: "reenvie seus arquivos ou instale o CLI" |
@@ -348,7 +348,7 @@ Three.js, ortográfica isométrica, `InstancedMesh` por (provider, tier de facha
 
 - `/` cidade + header (logo, contador, "Add my building" / "Adicionar meu prédio" → modal com `npx thetokentown`).
 - `/b/<handle>` e `/b/<handle>/<slug>` — cidade focada + `generateMetadata` apontando pra `/api/og/...` (PNG).
-- `/api/og/<handle>[/<slug>]` — `@vercel/og`, PNG 1200×630, prédio isométrico 2D (camadas, fachada, luzes), handle, andares, idade, `Citizen #N`, `building i of n` se n > 1, asterisco se `costEstimated`. Idioma pelo `locale` do dono.
+- `/api/og/<handle>[/<slug>]` — `@vercel/og` (`ImageResponse`, runtime edge), PNG 1200×630, `s-maxage=3600`. **Fonte embutida no bundle**, nunca buscada em request: o padrão documentado `fetch(new URL('./f.ttf', import.meta.url))` falha no runtime edge local (o Node não tem `fetch` pra `file:`), então renderizaria na Vercel e daria 500 no localhost. O desenho do prédio vem do mesmo módulo que o embed, prédio isométrico 2D (camadas, fachada, luzes), handle, andares, idade, `Citizen #N`, `building i of n` se n > 1, asterisco se `costEstimated`. Idioma pelo `locale` do dono.
 - `/e/<handle>[/<slug>][.svg]` — SVG 600×200, mesmo desenho, base no card do web antigo.
 - `/claim` (§5b.1) · `/join` · `/build` · `/device` · `/me` (perfil, prédios, máquinas, custo privado por fonte/modelo, toggle show_cost, uninstall) · `/how` (fórmulas, lista exata do que é enviado e do que nunca é, como remover, crédito ao ccusage e ao GitCity).
 
@@ -397,7 +397,9 @@ Three.js, ortográfica isométrica, `InstancedMesh` por (provider, tier de facha
 - [ ] Rede desligada → `sync --hook` exit 0, snapshot enfileirado, reenviado depois.
 - [ ] `uninstall` deixa os 3 arquivos de config equivalentes ao pré-install, com hooks de terceiros preservados.
 - [ ] Teste automatizado: snapshot serializado não contém `/`, `~`, `Users`, `home`, `@`.
-- [ ] `GET /e/<handle>.svg` **e** `GET /e/<handle>` devolvem 200 com o mesmo SVG.
+- [ ] `GET /e/<handle>.svg` devolve 200 `image/svg+xml`; `GET /e/<handle>` devolve 404.
+- [ ] O SVG do embed não tem `<script>`, nem handler de evento, nem referência externa.
+- [ ] A OG e o embed existem também pra lote reservado (degrau 0): quem só reservou consegue compartilhar o número no dia 1.
 - [ ] OG é PNG e renderiza no X e no Discord, nos dois idiomas.
 - [ ] `/how` diz, nos dois idiomas, que o Cursor está fora da V1 porque o Cursor não grava contagem de tokens localmente.
 - [ ] Prédio com qualquer camada estimada mostra `*` e "estimated" em card, OG, embed e `/b/`.
