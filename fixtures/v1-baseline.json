@@ -1,0 +1,20 @@
+{
+  "_note": "Frozen output of the v1 CLI (bin/thetokentown.mjs, schemaVersion 1) over these fixtures, TZ=UTC, --since 365. Captured 2026-09-06 so the v2 scanners can be checked against the shipped behaviour after the v1 entry point is retired.",
+  "totalTokens": 8039200,
+  "activeDays": 7,
+  "projectCount": 9,
+  "sources": [
+    {
+      "name": "claude",
+      "tokens": 7387668
+    },
+    {
+      "name": "codex",
+      "tokens": 645907
+    },
+    {
+      "name": "cursor",
+      "tokens": 5625
+    }
+  ]
+}

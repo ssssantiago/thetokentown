@@ -275,6 +275,7 @@ Mecânica obrigatória:
 |---|---|
 | `thetokentown` | `install` se não instalado, senão `status` |
 | `thetokentown scan` | Varre fontes, imprime tabela local. Não envia. |
+| `thetokentown --json` | Imprime o `Snapshot` v2 exato que o claim carregaria. Não envia. |
 | `thetokentown claim` | scan + abre `/claim#<snapshot>`. Sem token, sem rede. Caminho do primeiro prédio. |
 | `thetokentown login` | Device flow; token de hook em `~/.thetokentown/config.json` (0600) |
 | `thetokentown publish [--yes]` | scan + preview + confirmação + `POST /api/snapshot` com Bearer |
@@ -290,8 +291,8 @@ Interface `Source { id, detect(), scan(state), installHook(), uninstallHook() }`
 **Adaptadores:**
 - **claude** — loader ccusage. `~/.claude/projects/`, `~/.config/claude/projects/`, `CLAUDE_CONFIG_DIR`. `type: "assistant"` com `message.usage`; dedup por `message.id + requestId`. **Quando não dá pra montar a chave (falta `message.id` ou falta `requestId`), a linha é processada uma vez, sem dedup** — igual ao ccusage. Nunca cair pra uma chave sintética tipo `arquivo:linha`: ela é única por construção e faz o dedup virar no-op em silêncio, que é pior que não deduplicar de forma declarada. A contagem dessas linhas é exposta como `undedupedLines` no `--json` e no `Snapshot`, pra transparência.
 - **codex** — loader `@ccusage/codex`. `~/.codex/sessions/`, `~/.codex/archived_sessions/`, `CODEX_HOME`. Delta de `total_token_usage` cumulativo (o CLI antigo já faz isso e está certo).
-- **grok** — loader ccusage. `~/.grok/sessions/<cwd>/<uuid>/updates.jsonl`, só `turn_completed` com usage; custo `costUsdTicks / 1e10`. **Sem dado real do autor**: fixtures do ccusage; README marca "community-tested".
-- **cursor** — próprio, melhor esforço, dois caminhos: (a) `~/.cursor/token-usage/usage.jsonl` se existir (formato de stop hook — só conta depois de instalado, sem backfill); (b) copiar `state.vscdb` pra tmp e abrir read-only via `node:sqlite`, investigando chaves de composer/chat. Documentar o que for achado em `NOTES.md`. Custo sempre estimado (§5.3).
+- **grok** — `$GROK_HOME/sessions/<cwd-url-encoded>/<uuid>/updates.jsonl`, só `sessionUpdate === "turn_completed"`; custo `costUsdTicks / 1e10`, usado verbatim (nota fiscal ganha de estimativa). `inputTokens` **já inclui** cache, então `cachedReadTokens` e `cacheCreationTokens` são subtraídos de volta; `reasoningTokens` é subconjunto de output e não soma. **Sem dado real do autor**: fixture escrita a partir do formato documentado pelo ccusage; README e `fixtures/README.md` marcam "community-tested".
+- **cursor** — investigado em 06/09/2026 contra o Cursor 3.19.13; **`detect()` é `false`**. O `state.vscdb` foi copiado pra tmp com os sidecars `-wal`/`-shm` e aberto read-only: os registros `bubbleId:*` têm `createdAt`, `modelInfo.modelName` e `tokenCount`, mas o `tokenCount` é `{inputTokens: 0, outputTokens: 0}` em 7.691 de 7.697 mensagens, e `composerData.usageData` é `{}` nas 64 conversas. Não há o que ler. O caminho alternativo, `~/.cursor/token-usage/usage.jsonl`, depende de um stop hook que ninguém instala ainda (§7, tarefa 10) e nunca faz backfill. Apuração completa em `packages/sources/src/scanners/NOTES.md`. **Resolve a questão do cache:** `tokenCount` tem exatamente dois membros, sem nenhum campo de cache em nenhum registro — se o Cursor voltar a escrever números, `tokens = input + output`, `cacheRead = cacheWrite = 0`, custo estimado (§5.3).
 
 **Pricing:** `pricing.json` embutido + fetch `thetokentown.dev/pricing.json` (cache 24 h). Match exato → sem sufixo de data → prefixo. Desconhecido: custo 0 + warning uma vez. Chave `_blended.default` pra taxa do Cursor.
 

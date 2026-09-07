@@ -10,7 +10,7 @@ export const FIXTURES = fileURLToPath(new URL("../../../fixtures/", import.meta.
 /** Deterministic clock so the fixtures never age out of the window. */
 export const NOW = Date.parse("2026-09-06T12:00:00.000Z");
 export const SINCE = Date.parse("2026-01-01T00:00:00.000Z");
-export const SCAN = { since: SINCE, now: NOW };
+export const SCAN = { since: SINCE, now: NOW, timeZone: "UTC" };
 
 interface DiskFile {
   /** POSIX path relative to `fixtures/`, e.g. `claude/projects/a/b.jsonl`. */

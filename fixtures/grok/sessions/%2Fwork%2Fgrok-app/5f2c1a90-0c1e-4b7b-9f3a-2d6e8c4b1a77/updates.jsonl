@@ -1,0 +1,5 @@
+{"timestamp":"2026-09-02T16:10:00.000Z","sessionUpdate":"turn_completed","model":"grok-4.6","usage":{"inputTokens":42000,"cachedReadTokens":30000,"cacheCreationTokens":1500,"outputTokens":900,"reasoningTokens":300},"costUsdTicks":120000000}
+{"timestamp":"2026-09-03T16:17:00.000Z","sessionUpdate":"turn_completed","model":"grok-4.3","usage":{"inputTokens":45100,"cachedReadTokens":32000,"cacheCreationTokens":1620,"outputTokens":1110,"reasoningTokens":360},"costUsdTicks":129100000}
+{"timestamp":"2026-09-03T16:20:00.000Z","sessionUpdate":"turn_started","model":"grok-4.6","usage":{"inputTokens":999999,"outputTokens":999999},"costUsdTicks":999999999}
+{"timestamp":"2026-09-04T16:24:00.000Z","sessionUpdate":"turn_completed","model":"grok-4.6","usage":{"inputTokens":48200,"cachedReadTokens":34000,"cacheCreationTokens":1740,"outputTokens":1320,"reasoningTokens":420},"costUsdTicks":138200000}
+{"timestamp":"2026-09-05T16:31:00.000Z","sessionUpdate":"turn_completed","model":"grok-4.3","usage":{"inputTokens":51300,"cachedReadTokens":36000,"cacheCreationTokens":1860,"outputTokens":1530,"reasoningTokens":480},"costUsdTicks":147300000}

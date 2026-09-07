@@ -12,7 +12,7 @@ repository.
 
 | Package | What it is |
 |---|---|
-| [`packages/cli`](./packages/cli) | The `thetokentown` CLI. Reads local usage, sends only aggregates. |
+| [`packages/cli`](./packages/cli) | The `thetokentown` CLI. Reads local usage, sends only per-day aggregates. |
 | [`packages/core`](./packages/core) | Types, validation, pricing, 90-day aggregation, and the building formulas. |
 | [`packages/sources`](./packages/sources) | Per-tool loaders behind one reader interface, for Node and the browser. |
 | [`fixtures/`](./fixtures) | Anonymized session fixtures per source. |

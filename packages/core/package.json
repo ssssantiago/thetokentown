@@ -10,6 +10,12 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./dates": "./src/dates.ts",
+    "./metrics": "./src/metrics.ts",
+    "./pricing": "./src/pricing.ts",
+    "./aggregate": "./src/aggregate.ts",
+    "./schema": "./src/schema.ts",
     "./pricing.json": "./pricing.json"
   },
   "scripts": {

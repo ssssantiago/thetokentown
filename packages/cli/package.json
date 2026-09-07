@@ -1,19 +1,21 @@
 {
   "name": "thetokentown",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Turn your last 90 days of AI coding into a building in The Token Town.",
   "type": "module",
   "bin": {
-    "thetokentown": "bin/thetokentown.mjs"
+    "thetokentown": "dist/thetokentown.mjs"
   },
   "files": [
-    "bin",
+    "dist",
     "LICENSE",
     "README.md",
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "build": "esbuild src/cli.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/thetokentown.mjs --banner:js=\"#!/usr/bin/env node\" && chmod +x dist/thetokentown.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -21,6 +23,7 @@
   "keywords": [
     "claude-code",
     "codex",
+    "grok",
     "tokens",
     "developer-tools",
     "visualization"
@@ -31,8 +34,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ssssantiago/thetokentown.git"
+    "url": "git+https://github.com/ssssantiago/thetokentown.git",
+    "directory": "packages/cli"
   },
-  "homepage": "https://github.com/ssssantiago/thetokentown#readme",
-  "bugs": "https://github.com/ssssantiago/thetokentown/issues"
+  "homepage": "https://thetokentown.dev",
+  "bugs": "https://github.com/ssssantiago/thetokentown/issues",
+  "dependencies": {},
+  "devDependencies": {
+    "@thetokentown/core": "workspace:*",
+    "@thetokentown/sources": "workspace:*",
+    "@types/node": "22.19.19",
+    "esbuild": "0.25.12",
+    "typescript": "5.9.3"
+  }
 }

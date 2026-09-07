@@ -1,6 +1,5 @@
 /**
- * Claude Code. Ported from bin/thetokentown.mjs with the behavior unchanged;
- * the only addition is the `undedupedLines` counter.
+ * Claude Code. Emits DailyUsage per day x model. SPEC §6.
  *
  * Roots are ~/.claude/projects, ~/.config/claude/projects and CLAUDE_CONFIG_DIR
  * in the CLI, or the picked directory in the browser. The scanner does not care.
@@ -8,25 +7,35 @@
 
 import type { Reader } from "../reader.ts";
 import { firstSegment, readLines } from "../reader.ts";
+import { createDailyAccumulator } from "../daily.ts";
 import type { ScanOptions, ScanResult } from "../types.ts";
 import { emptyResult } from "../types.ts";
 import { asRecord, jsonlFiles, mightCarryUsage, numeric, parseLine, pick, validTimestamp } from "./shared.ts";
 
-function claudeTotal(usage: unknown): number {
-  const row = asRecord(usage);
-  if (!row) return 0;
-  return (
-    numeric(row["input_tokens"]) +
-    numeric(row["output_tokens"]) +
-    numeric(row["cache_creation_input_tokens"]) +
-    numeric(row["cache_read_input_tokens"])
-  );
+const UNKNOWN_MODEL = "unknown";
+
+interface ClaudeTokens {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
 }
 
-/** `a/b/c.jsonl` -> `c.jsonl`; the original used path.basename. */
-function basename(path: string): string {
-  const segments = path.split(/[\\/]/);
-  return segments[segments.length - 1] ?? path;
+function claudeTokens(usage: unknown): ClaudeTokens | null {
+  const row = asRecord(usage);
+  if (!row) return null;
+  const tokens = {
+    input: numeric(row["input_tokens"]),
+    output: numeric(row["output_tokens"]),
+    cacheWrite: numeric(row["cache_creation_input_tokens"]),
+    cacheRead: numeric(row["cache_read_input_tokens"]),
+  };
+  const total = tokens.input + tokens.output + tokens.cacheWrite + tokens.cacheRead;
+  return total > 0 ? tokens : null;
+}
+
+export function detect(roots: string[]): boolean {
+  return roots.length > 0;
 }
 
 export async function scanClaude(
@@ -35,16 +44,17 @@ export async function scanClaude(
   options: ScanOptions,
 ): Promise<ScanResult> {
   const result = emptyResult();
-  // Shared across every root and file, exactly as in the original.
+  const daily = createDailyAccumulator({ timeZone: options.timeZone });
+
+  // Shared across every root and file: the same message can be written to two
+  // files when a session is resumed.
   const seen = new Set<string>();
 
   for (const root of roots) {
     for (const file of await jsonlFiles(reader, root, options)) {
       const project = firstSegment(file.relativePath) || "unknown";
-      let index = 0;
 
       for await (const line of readLines(reader, file.path)) {
-        index += 1;
         if (!mightCarryUsage(line)) continue;
 
         const raw = parseLine(line);
@@ -54,30 +64,42 @@ export async function scanClaude(
         const entry = pick(raw, "type") === "agent_progress" ? pick(pick(raw, "data"), "message") : raw;
 
         const message = pick(entry, "message");
-        const tokens = claudeTotal(pick(message, "usage"));
+        const tokens = claudeTokens(pick(message, "usage"));
         const timestamp = validTimestamp(pick(entry, "timestamp"), options);
         if (!timestamp || !tokens) continue;
 
         const messageId = pick(message, "id");
         const requestId = pick(entry, "requestId") ?? pick(entry, "request_id");
 
-        // TODO(task 4): SPEC §6 says an unbuildable key means "process once,
-        // no dedup". The synthetic key below is the current CLI's behavior and
-        // is kept byte-for-byte so this refactor changes nothing; the counter
-        // measures how often it is reached.
-        if (typeof messageId !== "string" || !messageId || !requestId) {
+        // SPEC §6: dedup on message.id + requestId. When either is missing the
+        // pair cannot be built, so the line is counted once with no key and
+        // reported. Never synthesize a key from the file name or the line
+        // number — such a key is unique by construction, which silently turns
+        // dedup into a no-op across files that share a base name.
+        if (typeof messageId === "string" && messageId && typeof requestId === "string" && requestId) {
+          const key = `${messageId}:${requestId}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+        } else {
           result.undedupedLines += 1;
         }
 
-        const key = `${messageId || basename(file.path)}:${requestId || index}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
+        const model = pick(message, "model");
 
         result.projects.add(project);
-        result.events.push({ timestamp, tokens, source: "claude", project });
+        daily.add({
+          timestamp,
+          provider: "claude",
+          model: typeof model === "string" && model ? model : UNKNOWN_MODEL,
+          ...tokens,
+          turns: 1,
+          sessionKey: file.path,
+        });
       }
     }
   }
 
+  result.daily = daily.rows();
+  for (const model of daily.unknownModels) result.unknownModels.add(model);
   return result;
 }

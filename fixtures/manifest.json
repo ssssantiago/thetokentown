@@ -29,23 +29,28 @@
     },
     {
       "path": "codex/sessions/2026/09/01/rollout-session-1.jsonl",
-      "lines": 40,
-      "sha256": "f7ec9626ddde17a5"
+      "lines": 41,
+      "sha256": "87cb50186ed6a38f"
     },
     {
       "path": "codex/sessions/2026/09/01/rollout-session-2.jsonl",
-      "lines": 2,
-      "sha256": "e7dacd7ff2e3ddb4"
+      "lines": 3,
+      "sha256": "51f449f76b239431"
     },
     {
       "path": "codex/sessions/2026/09/01/rollout-session-3.jsonl",
-      "lines": 40,
-      "sha256": "e9668c4ced8c467e"
+      "lines": 41,
+      "sha256": "aaf61368573f5c50"
     },
     {
       "path": "cursor/usage.jsonl",
       "lines": 3,
       "sha256": "a3ee12ec2f4ff954"
+    },
+    {
+      "path": "grok/sessions/%2Fwork%2Fgrok-app/5f2c1a90-0c1e-4b7b-9f3a-2d6e8c4b1a77/updates.jsonl",
+      "lines": 5,
+      "sha256": "5d1d9a6d6253a94f"
     }
   ]
 }

@@ -234,6 +234,18 @@ function buildCodex() {
         continue;
       }
 
+      // turn_context carries the model, and also cwd + the user's own
+      // instructions. Only the model survives.
+      if (row?.type === "turn_context" && typeof row?.payload?.model === "string") {
+        timestamps.push(timestamp);
+        rows.push({
+          type: "turn_context",
+          timestamp,
+          payload: { model: row.payload.model },
+        });
+        continue;
+      }
+
       const info = row?.payload?.type === "token_count" ? row.payload.info : null;
       if (!info) continue;
 
@@ -280,11 +292,51 @@ function buildCursor() {
   return { staged: [{ path: join("cursor", "usage.jsonl"), rows }], timestamps: [] };
 }
 
+// ---------------------------------------------------------------- grok
+
+/**
+ * There is no ~/.grok on this machine. This fixture is written from the
+ * documented ccusage format (path, `sessionUpdate: "turn_completed"`, the
+ * token field names and `costUsdTicks` in 1e-10 USD) — it is not a capture of
+ * a real session, and fixtures/README.md says so. The adapter is marked
+ * "community-tested" until someone runs it against real Grok data.
+ */
+function buildGrok() {
+  const encodedCwd = encodeURIComponent("/work/grok-app").replace(/%2F/g, "%2F");
+  const session = "5f2c1a90-0c1e-4b7b-9f3a-2d6e8c4b1a77";
+  const rows = [0, 1, 2, 3].map((index) => ({
+    timestamp: `2026-09-0${2 + index}T16:${10 + index * 7}:00.000Z`,
+    sessionUpdate: "turn_completed",
+    model: index % 2 === 0 ? "grok-4.6" : "grok-4.3",
+    usage: {
+      inputTokens: 42_000 + index * 3_100,
+      cachedReadTokens: 30_000 + index * 2_000,
+      cacheCreationTokens: 1_500 + index * 120,
+      outputTokens: 900 + index * 210,
+      reasoningTokens: 300 + index * 60,
+    },
+    costUsdTicks: (120_000_000 + index * 9_100_000),
+  }));
+  // A row the scanner must skip: right shape, wrong event.
+  rows.splice(2, 0, {
+    timestamp: "2026-09-03T16:20:00.000Z",
+    sessionUpdate: "turn_started",
+    model: "grok-4.6",
+    usage: { inputTokens: 999_999, outputTokens: 999_999 },
+    costUsdTicks: 999_999_999,
+  });
+  return {
+    staged: [{ path: join("grok", "sessions", encodedCwd, session, "updates.jsonl"), rows }],
+    timestamps: [],
+  };
+}
+
 // ---------------------------------------------------------------- write
 
 const claude = buildClaude();
 const codex = buildCodex();
 const cursor = buildCursor();
+const grok = buildGrok();
 
 const remapDay = createDayMapper([...claude.timestamps, ...codex.timestamps]);
 
@@ -295,7 +347,7 @@ for (const { staged } of [claude, codex]) {
     files.push({ path: file.path, body: `${rows.map((r) => JSON.stringify(r)).join("\n")}\n` });
   }
 }
-for (const file of cursor.staged) {
+for (const file of [...cursor.staged, ...grok.staged]) {
   files.push({
     path: file.path,
     body: `${file.rows.map((r) => JSON.stringify(r)).join("\n")}\n`,
@@ -327,7 +379,7 @@ if (CHECK) {
   process.exit(0);
 }
 
-for (const directory of ["claude", "codex", "cursor"]) {
+for (const directory of ["claude", "codex", "cursor", "grok"]) {
   rmSync(join(OUT, directory), { recursive: true, force: true });
 }
 for (const file of files) {
