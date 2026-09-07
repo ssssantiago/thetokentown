@@ -56,7 +56,10 @@ export interface BuildingStats {
   /** Oldest day in the whole history, not just the window. null when empty. */
   firstDay: string | null;
   lastDay: string | null;
+  /** Consecutive days ending today or yesterday (UTC); 0 once it breaks. §5.0 */
   streakDays: number;
+  /** Best run anywhere in the history. Never goes down. §5.0 */
+  longestStreak: number;
   ageDays: number;
   facade: FacadeTier;
   costByProvider90d: Record<Provider, number>;

@@ -51,4 +51,4 @@ export {
 } from "./schema.ts";
 
 export type { AggregateOptions } from "./aggregate.ts";
-export { aggregate, windowStart } from "./aggregate.ts";
+export { aggregate, streaks, windowStart } from "./aggregate.ts";

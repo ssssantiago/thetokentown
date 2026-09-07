@@ -32,6 +32,42 @@ function emptyByProvider(): Record<Provider, number> {
   return totals;
 }
 
+/**
+ * Two numbers, because one alone lies eventually (§5.0):
+ * the current run, which must reach today or yesterday to count at all, and
+ * the best run in the whole history, which never goes down.
+ */
+export function streaks(
+  activeDays: ReadonlySet<string>,
+  today: string,
+): { streakDays: number; longestStreak: number } {
+  if (activeDays.size === 0) return { streakDays: 0, longestStreak: 0 };
+
+  const sorted = [...activeDays].sort();
+
+  let longestStreak = 1;
+  let run = 1;
+  for (let i = 1; i < sorted.length; i += 1) {
+    const previous = sorted[i - 1]!;
+    const current = sorted[i]!;
+    run = daysBetween(previous, current) === 1 ? run + 1 : 1;
+    if (run > longestStreak) longestStreak = run;
+  }
+
+  // Yesterday still counts: someone who coded past midnight should not lose
+  // the streak to the server's timezone.
+  const yesterday = addDays(today, -1);
+  let cursor = activeDays.has(today) ? today : activeDays.has(yesterday) ? yesterday : null;
+
+  let streakDays = 0;
+  while (cursor !== null && activeDays.has(cursor)) {
+    streakDays += 1;
+    cursor = addDays(cursor, -1);
+  }
+
+  return { streakDays, longestStreak };
+}
+
 /** Largest value wins; cost first, tokens as tie-break, insertion order last. */
 function topKey<K>(cost: Map<K, number>, tokens: Map<K, number>): K | null {
   let best: K | null = null;
@@ -94,14 +130,7 @@ export function aggregate(daily: DailyUsage[], options: AggregateOptions = {}): 
 
   const ageDays = firstDay === null ? 0 : Math.max(0, daysBetween(firstDay, today));
 
-  let streakDays = 0;
-  if (lastDay !== null) {
-    let cursor = lastDay;
-    while (activeDays.has(cursor)) {
-      streakDays += 1;
-      cursor = addDays(cursor, -1);
-    }
-  }
+  const { streakDays, longestStreak } = streaks(activeDays, today);
 
   // Only providers that actually appear in the window can be dominant, so a
   // building with no usage reports null instead of the first enum member.
@@ -121,6 +150,7 @@ export function aggregate(daily: DailyUsage[], options: AggregateOptions = {}): 
     firstDay,
     lastDay,
     streakDays,
+    longestStreak,
     ageDays,
     facade: facadeForAge(ageDays),
     costByProvider90d,

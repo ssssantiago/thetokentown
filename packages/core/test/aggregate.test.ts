@@ -41,6 +41,7 @@ test("an empty history is a valid one-floor plot, not a crash", () => {
   assert.equal(stats.lastDay, null);
   assert.equal(stats.ageDays, 0);
   assert.equal(stats.streakDays, 0);
+  assert.equal(stats.longestStreak, 0);
   assert.equal(stats.facade, "scaffolding");
   assert.equal(stats.dominantProvider, null);
   assert.equal(stats.dominantModel, null);
@@ -76,14 +77,24 @@ test("floors come from the windowed cost", () => {
   assert.equal(at([row({ costUsd: 3 }), row({ model: "other", costUsd: 4 })]).floors, 30, "3 + 4");
 });
 
-test("the streak counts consecutive days back from the most recent one", () => {
+test("the current streak runs back from today and stops at the first gap", () => {
   const stats = at([
     row({ day: "2026-09-06" }),
     row({ day: "2026-09-05" }),
     row({ day: "2026-09-04" }),
     row({ day: "2026-09-01" }),
   ]);
-  assert.equal(stats.streakDays, 3, "the gap on 09-02/09-03 ends the streak");
+  assert.equal(stats.streakDays, 3, "the gap on 09-02/09-03 ends the current run");
+  assert.equal(stats.longestStreak, 3);
+});
+
+test("yesterday keeps the streak alive, the day before does not", () => {
+  const yesterday = at([row({ day: "2026-09-05" }), row({ day: "2026-09-04" })]);
+  assert.equal(yesterday.streakDays, 2, "coding past midnight must not cost the streak");
+
+  const older = at([row({ day: "2026-09-04" }), row({ day: "2026-09-03" })]);
+  assert.equal(older.streakDays, 0, "two days back is a broken streak");
+  assert.equal(older.longestStreak, 2, "but the record stands");
 });
 
 test("several rows on one day are still a single streak day", () => {
@@ -92,12 +103,45 @@ test("several rows on one day are still a single streak day", () => {
     row({ day: "2026-09-06", provider: "codex" }),
   ]);
   assert.equal(stats.streakDays, 1);
+  assert.equal(stats.longestStreak, 1);
 });
 
-test("a stale streak is measured from the last active day, not from today", () => {
-  const stats = at([row({ day: "2026-08-01" }), row({ day: "2026-07-31" })]);
+test("a stale history has no current streak but keeps its record", () => {
+  const stats = at([
+    row({ day: "2026-08-01" }),
+    row({ day: "2026-07-31" }),
+    row({ day: "2026-07-30" }),
+  ]);
   assert.equal(stats.lastDay, "2026-08-01");
+  assert.equal(stats.streakDays, 0, "SPEC §5.0: the number that pressures goes to zero");
+  assert.equal(stats.longestStreak, 3, "SPEC §5.0: the number that flatters never goes down");
+});
+
+test("the record looks at the whole history, not just the 90-day window", () => {
+  const stats = at([
+    // Five in a row well outside the window.
+    row({ day: "2026-01-01" }),
+    row({ day: "2026-01-02" }),
+    row({ day: "2026-01-03" }),
+    row({ day: "2026-01-04" }),
+    row({ day: "2026-01-05" }),
+    // Two in a row ending today.
+    row({ day: "2026-09-05" }),
+    row({ day: "2026-09-06" }),
+  ]);
+  assert.equal(stats.cost90d, 0, "the January days are outside the window");
   assert.equal(stats.streakDays, 2);
+  assert.equal(stats.longestStreak, 5);
+});
+
+test("the record survives a month boundary", () => {
+  const stats = at([
+    row({ day: "2026-08-30" }),
+    row({ day: "2026-08-31" }),
+    row({ day: "2026-09-01" }),
+  ]);
+  assert.equal(stats.longestStreak, 3);
+  assert.equal(stats.streakDays, 0);
 });
 
 test("the dominant provider and model are the most expensive ones", () => {

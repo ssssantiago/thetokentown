@@ -17,16 +17,14 @@ Prazo: um fim de semana (12–13/set). Cortes da seção 13 são obrigatórios.
 
 ## 0. Estado em 06/09/2026 e o que muda na rev. 6
 
-### 0.1 Bloqueio aberto — resolver ANTES de qualquer código
+### 0.1 Tarefa 0 — feita em 06/09/2026
 
-Auditado em 06/09/2026:
+O nome está garantido nos dois lugares:
 
-- `npm view thetokentown` → **404**. O nome está solto.
-- `thetokentown.dev` → **disponível**. Não foi comprado.
+- `npm view thetokentown` → **0.1.0**, publicado pelo Santiago em 06/09.
+- `thetokentown.dev` → **registrado**, apontando pra Vercel. Ainda sem projeto anexado (responde 404, TLS não provisionado) — fecha na tarefa 12.
 
-Oito dias pro lançamento, e a rev. 5 nasceu exatamente de perder um nome no npm. **Publicar o placeholder `0.0.1` e comprar o domínio é a tarefa 0 da seção 12** e exige o Santiago (npm login e cartão). Enquanto os dois não estiverem no nome dele, todo o resto é construção sobre nome de terceiro.
-
-**Regra permanente:** nunca um nome de comando vai pro tuíte sem `npm view <nome>` retornar 404 no mesmo dia.
+A rev. 5 nasceu de perder um nome no npm. **Regra permanente:** nunca um nome de comando vai pro tuíte sem `npm view <nome>` ter sido conferido no mesmo dia.
 
 ### 0.2 O que existe hoje (sessão do Codex, 06/09)
 
@@ -163,7 +161,7 @@ usage_daily  (building_id, machine_id, day, provider, model,
               pk(building_id, machine_id, day, provider, model))
 building_stats (building_id pk,
               cost_90d, output_90d, turns_90d, floors, cost_estimated bool,
-              first_day, last_day, streak_days, age_days,
+              first_day, last_day, streak_days, longest_streak, age_days,
               cost_by_provider_90d jsonb, dominant_provider, dominant_model,
               last_sync_at, lights_on bool, decay_level int,
               grid_x, grid_y, recalculated_at)
@@ -185,6 +183,15 @@ building_stats (building_id pk,
 Consequência natural: quem parou há 90 dias tem `cost_90d = 0` → 1 andar rachado com mato em cima. Não precisa deletar ninguém.
 
 Cores: claude `#D97757`, codex `#10A37F`, grok `#111111` (aresta clara), cursor `#3B82F6`.
+
+### 5.0 Sequências
+
+Duas medidas, porque uma só mente em algum momento:
+
+- **`streak_days` (sequência corrente):** dias consecutivos com uso terminando **hoje ou ontem** em UTC. Se o último dia com dado for anterior a ontem, é **0**. É o número que pressiona — quem parou vê zerar.
+- **`longest_streak` (recorde):** a maior sequência de dias consecutivos em **todo o histórico**, não só na janela de 90 dias. Nunca diminui. É o número que orgulha.
+
+O card e a API mostram os dois. "Ontem" entra na sequência corrente porque quem programou até 2h da manhã não pode perder a sequência por causa do fuso do servidor.
 
 ### 5.1 Luz = sync, e só sync
 
@@ -309,7 +316,7 @@ Regras: path absoluto (nunca `npx` em hook); merge cirúrgico identificando noss
 
 Moderação de texto livre (`city`, `x_handle`, `link`): máx 40 chars; sem URLs em `city`/`x_handle`; emoji só bandeiras; `link` só `https://`; botão *report* no card manda e-mail pro autor com handle e campo; resolução manual.
 
-Campos públicos: `handle, slug, avatarUrl, citizenNo, buildingIndex, buildingCount, city, link, floors, costEstimated, ageDays, firstDay, streakDays, dominantProvider, dominantModel, providerShares, lightsOn, decayLevel, underConstruction, costUsd?`.
+Campos públicos: `handle, slug, avatarUrl, citizenNo, buildingIndex, buildingCount, city, link, floors, costEstimated, ageDays, firstDay, streakDays, longestStreak, dominantProvider, dominantModel, providerShares, lightsOn, decayLevel, underConstruction, costUsd?`.
 
 ## 9. Validação
 
@@ -346,6 +353,7 @@ Three.js, ortográfica isométrica, `InstancedMesh` por (provider, tier de facha
 |---|---|---|
 | 1 | Monorepo pnpm; renomear `~/tokentown` → `~/thetokentown` e `~/tokentown-web` → `~/thetokentown-web`; mover CLI pra `packages/cli`; renomear `test/tokentown.test.mjs`; CI | 1,5 h |
 | 2 | `packages/core`: tipos v2, zod, `pricing.json` (+ `_blended`), agregação 90d, andares, idade, decay, custo estimado do Cursor. Testes | 2,5 h |
+| 2b | Conferir **cada linha** do `pricing.json` contra a página oficial de preços do provider, com um campo `source` (URL) por linha. Sem isso a altura de todo prédio da cidade está errada | 1 h |
 | 3 | Refatorar os scanners atuais pra `packages/sources` com a interface `list/read` abstrata (destrava o `/build` de graça) | 2 h |
 | 4 | claude + codex emitindo `DailyUsage` por provider × model × dia com custo; grok com fixtures do ccusage | 2,5 h |
 | 5 | `apps/web` novo: Next 15 + next-intl (en/pt-BR no primeiro commit), transplantar `globals.css` + `CityExperience.tsx`, câmera ortográfica, `/api/city` fake com 60 prédios variados | 3 h |
