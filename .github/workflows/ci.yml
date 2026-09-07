@@ -32,6 +32,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Fixtures match their manifest
+        run: node scripts/anonymize-fixtures.mjs --check
+
       - name: String rule (thetokentown is the only form)
         run: |
           # The bracket stops this workflow from matching its own pattern.

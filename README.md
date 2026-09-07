@@ -14,8 +14,8 @@ repository.
 |---|---|
 | [`packages/cli`](./packages/cli) | The `thetokentown` CLI. Reads local usage, sends only aggregates. |
 | [`packages/core`](./packages/core) | Types, validation, pricing, 90-day aggregation, and the building formulas. |
-| `packages/sources` | Per-tool loaders (Claude Code, Codex, Grok, Cursor). |
-| `fixtures/` | Anonymized session fixtures per source. |
+| [`packages/sources`](./packages/sources) | Per-tool loaders behind one reader interface, for Node and the browser. |
+| [`fixtures/`](./fixtures) | Anonymized session fixtures per source. |
 
 ## Development
 

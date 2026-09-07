@@ -1,0 +1,25 @@
+{
+  "name": "@thetokentown/sources",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Per-tool usage loaders behind one reader interface, for both Node and the browser.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@thetokentown/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "typescript": "5.9.3"
+  }
+}

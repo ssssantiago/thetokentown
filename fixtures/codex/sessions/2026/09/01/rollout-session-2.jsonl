@@ -1,0 +1,2 @@
+{"type":"session_meta","timestamp":"2026-08-31T03:25:56.179Z","payload":{"cwd":"/work/codex-app-2"}}
+{"type":"event_msg","timestamp":"2026-08-31T03:26:01.836Z","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":9196,"cached_input_tokens":8192,"output_tokens":91,"reasoning_output_tokens":54,"total_tokens":9287},"last_token_usage":{"input_tokens":9196,"cached_input_tokens":8192,"output_tokens":91,"reasoning_output_tokens":54,"total_tokens":9287}}}}

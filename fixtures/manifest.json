@@ -1,0 +1,51 @@
+{
+  "generatedBy": "scripts/anonymize-fixtures.mjs",
+  "lastDay": "2026-09-05",
+  "files": [
+    {
+      "path": "claude/projects/project-alpha/session-1.jsonl",
+      "lines": 40,
+      "sha256": "a36ddf9dae11903f"
+    },
+    {
+      "path": "claude/projects/project-alpha/session-2.jsonl",
+      "lines": 40,
+      "sha256": "c1852172308733ee"
+    },
+    {
+      "path": "claude/projects/project-beta/session-1.jsonl",
+      "lines": 40,
+      "sha256": "00bb500f61e0cba1"
+    },
+    {
+      "path": "claude/projects/project-gamma/session-1.jsonl",
+      "lines": 11,
+      "sha256": "56026231d2119cbf"
+    },
+    {
+      "path": "claude/projects/project-gamma/session-2.jsonl",
+      "lines": 40,
+      "sha256": "47be38ede2b08854"
+    },
+    {
+      "path": "codex/sessions/2026/09/01/rollout-session-1.jsonl",
+      "lines": 40,
+      "sha256": "f7ec9626ddde17a5"
+    },
+    {
+      "path": "codex/sessions/2026/09/01/rollout-session-2.jsonl",
+      "lines": 2,
+      "sha256": "e7dacd7ff2e3ddb4"
+    },
+    {
+      "path": "codex/sessions/2026/09/01/rollout-session-3.jsonl",
+      "lines": 40,
+      "sha256": "e9668c4ced8c467e"
+    },
+    {
+      "path": "cursor/usage.jsonl",
+      "lines": 3,
+      "sha256": "a3ee12ec2f4ff954"
+    }
+  ]
+}
