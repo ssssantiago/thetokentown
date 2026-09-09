@@ -267,3 +267,181 @@ test("publish without --yes and without a terminal does not send", async () => {
   }
 });
 
+// ---------------------------------------------------------------- sync
+
+test("sync posts the full snapshot, keeps per-file cursors, and reuses them until a file changes", async () => {
+  const box = sandbox({ copyTools: true });
+  const server = await mockServer();
+  try {
+    await login(box, server.url);
+
+    const first = await run(["sync", "--since", "365"], box.env);
+    assert.equal(first.status, 0, first.stderr);
+    assert.match(first.stdout, /scanned \[claude,codex,grok\] cached \[\]/);
+    assert.match(first.stdout, /12 floors · lights on · Citizen #42/);
+
+    const state = box.json("state.json");
+    assert.equal(state.version, 1);
+    for (const id of ["claude", "codex", "grok"]) {
+      assert.ok(Object.keys(state.sources[id].files).length > 0, `${id} has file cursors`);
+      assert.ok(Object.values(state.sources[id].files).every((cursor) => /^\d+:\d+$/.test(cursor)), "size:mtime");
+      assert.ok(state.sources[id].daily.length > 0, `${id} cached rows`);
+    }
+
+    const second = await run(["sync", "--since", "365"], box.env);
+    assert.equal(second.status, 0, second.stderr);
+    assert.match(second.stdout, /scanned \[\] cached \[claude,codex,grok\]/);
+
+    const posts = server.calls.filter((call) => call.path === "/api/snapshot");
+    assert.equal(posts.length, 2);
+    assert.deepEqual(posts[1].body.daily, posts[0].body.daily, "the cached rows are the scanned rows");
+    assert.equal(posts[0].body.source, "cli");
+    assert.equal(posts[0].body.undedupedLines, 0);
+
+    // Append one Claude event; only Claude is rescanned.
+    const claudeFile = join(box.claude, "projects", "project-alpha", "session-1.jsonl");
+    const sample = readFileSync(claudeFile, "utf8").split("\n").find((line) => line.includes('"usage"'));
+    await sleep(20);
+    writeFileSync(claudeFile, `${readFileSync(claudeFile, "utf8")}${sample.replace(/"id":"([^"]+)"/, '"id":"msg_new_1"')}\n`);
+
+    const third = await run(["sync", "--since", "365"], box.env);
+    assert.equal(third.status, 0, third.stderr);
+    assert.match(third.stdout, /scanned \[claude\] cached \[codex,grok\]/);
+  } finally {
+    await server.close();
+    box.cleanup();
+  }
+});
+
+test("a corrupt state.json means a full rescan, never a failure", async () => {
+  const box = sandbox();
+  const server = await mockServer();
+  try {
+    await login(box, server.url);
+    mkdirSync(box.home, { recursive: true });
+    writeFileSync(box.file("state.json"), "{ this is not json");
+    const result = await run(["sync", "--since", "365"], box.env);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /scanned \[claude,codex,grok\]/);
+    assert.equal(box.json("state.json").version, 1, "rewritten");
+  } finally {
+    await server.close();
+    box.cleanup();
+  }
+});
+
+test("sync --hook exits 0 at once, hands off, and queues when the server is down", async () => {
+  const box = sandbox();
+  const dead = await deadUrl();
+  try {
+    await run(["login", "--token", "tok_test_123", "--site", dead], box.env);
+
+    const started = Date.now();
+    const result = await run(["sync", "--hook", "--flush", "--since", "365"], box.env, {
+      input: JSON.stringify({ session_id: "abc", hook_event_name: "Stop", stop_hook_active: false }),
+    });
+    const wall = Date.now() - started;
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout, "", "a hook is silent");
+    assert.equal(result.stderr, "", "a hook is silent");
+
+    assert.ok(await eventually(() => existsSync(box.file("queue.json"))), "the worker queued the snapshot");
+    const queue = box.json("queue.json");
+    assert.equal(queue.snapshot.version, 2);
+    assert.equal(queue.snapshot.source, "cli");
+    assert.ok(queue.snapshot.daily.length > 0);
+    assert.equal(queue.attempts, 1);
+    assert.match(queue.lastError, /ECONNREFUSED/);
+
+    const log = box.read("hook.log");
+    const handoff = /hook: handed off to worker pid \d+ in ([\d.]+) ms \(boot ([\d.]+), stdin ([\d.]+), spawn ([\d.]+)\), flush/.exec(log);
+    assert.ok(handoff, `hook.log has the hand-off line:\n${log}`);
+    assert.match(log, /worker: POST failed, snapshot queued/);
+    assert.ok(Number(handoff[1]) < wall, "the in-process figure is smaller than the wall clock");
+    // SPEC §14 wants < 50 ms synchronous. The number is printed so a run on
+    // any machine reports what it measured; the hard bound here only catches
+    // a regression into seconds.
+    console.log(`    hook hand-off: ${handoff[1]} ms in-process (boot ${handoff[2]}, stdin ${handoff[3]}, spawn ${handoff[4]}); ${wall} ms wall clock on ${process.platform}`);
+    assert.ok(Number(handoff[1]) < 1000);
+    assert.ok(Number(handoff[3]) < 200, "stdin was read, not waited for");
+
+    assert.ok(existsSync(box.file("last-sync")), "the throttle stamp was written");
+  } finally {
+    box.cleanup();
+  }
+});
+
+test("sync --hook honours the 10-minute throttle, --flush, stop_hook_active, and a missing token", async () => {
+  const box = sandbox();
+  try {
+    // No token: log and leave.
+    let result = await run(["sync", "--hook"], box.env, { input: "{}" });
+    assert.equal(result.status, 0);
+    assert.match(box.read("hook.log"), /skipped, not logged in/);
+    assert.equal(existsSync(box.file("last-sync")), false);
+
+    await run(["login", "--token", "tok_test_123", "--site", "http://127.0.0.1:1"], box.env);
+    writeFileSync(box.file("last-sync"), `${Date.now() - 60_000}\n`);
+
+    result = await run(["sync", "--hook"], box.env, { input: '{"session_id":"x"}' });
+    assert.equal(result.status, 0);
+    assert.match(box.read("hook.log"), /throttled, last sync 6\ds ago/);
+
+    result = await run(["sync", "--hook", "--flush"], box.env, { input: '{"stop_hook_active": true}' });
+    assert.equal(result.status, 0);
+    assert.match(box.read("hook.log"), /stop_hook_active, nothing to do/);
+
+    // Garbage on stdin is ignored, and a bad site is still exit 0.
+    result = await run(["sync", "--hook", "--flush"], box.env, { input: "not json at all" });
+    assert.equal(result.status, 0);
+    assert.match(box.read("hook.log"), /handed off to worker/);
+  } finally {
+    await sleep(500); // let the detached worker finish before the dir goes away
+    box.cleanup();
+  }
+});
+
+test("a queued snapshot is retried by the next hook run and cleared on success", async () => {
+  const box = sandbox();
+  const dead = await deadUrl();
+  try {
+    await run(["login", "--token", "tok_test_123", "--site", dead], box.env);
+    const failed = await run(["sync", "--since", "365"], box.env);
+    assert.equal(failed.status, 1);
+    assert.match(failed.stdout, /snapshot queued/);
+    assert.ok(existsSync(box.file("queue.json")));
+
+    const server = await mockServer();
+    try {
+      // Throttled (last-sync is fresh) but a queue exists → queue-only worker.
+      writeFileSync(box.file("last-sync"), `${Date.now()}\n`);
+      const hook = await run(["sync", "--hook", "--site", server.url], box.env, { input: "{}" });
+      assert.equal(hook.status, 0);
+      assert.ok(await eventually(() => !existsSync(box.file("queue.json"))), "queue cleared");
+      assert.match(box.read("hook.log"), /queue only/);
+      assert.match(box.read("hook.log"), /queued snapshot sent after 1 failed attempt/);
+      const post = server.calls.find((call) => call.path === "/api/snapshot");
+      assert.ok(post);
+      assert.equal(post.body.source, "cli");
+    } finally {
+      await server.close();
+    }
+  } finally {
+    box.cleanup();
+  }
+});
+
+test("hook.log rotates past 1 MB", async () => {
+  const box = sandbox();
+  try {
+    mkdirSync(box.home, { recursive: true });
+    writeFileSync(box.file("hook.log"), "x".repeat(1024 * 1024 + 10));
+    const result = await run(["sync", "--hook"], box.env, { input: "{}" });
+    assert.equal(result.status, 0);
+    assert.ok(existsSync(box.file("hook.log.1")), "rotated");
+    assert.ok(statSync(box.file("hook.log")).size < 1024, "fresh log");
+  } finally {
+    box.cleanup();
+  }
+});
+

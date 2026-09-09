@@ -87,7 +87,8 @@ async function main(): Promise<number> {
     case "install":
       return notYet("install");
     case "sync":
-      return notYet("sync");
+      if (flags.hook && !flags.worker) return (await import("./commands/hook.ts")).hookCommand(flags);
+      return (await import("./commands/sync.ts")).syncCommand(flags);
     case "uninstall":
       return notYet("uninstall");
     case "status":
