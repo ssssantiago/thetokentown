@@ -31,15 +31,51 @@ before anything is sent — that is the same object the claim link carries.
 The claim travels in a **URL fragment**, gzipped. Fragments are not sent to
 servers, so the payload only ever reaches the page after you have signed in.
 
-## Options
+## Commands
 
-```text
---json          print the exact snapshot; send nothing
---demo          preview a building with safe demo data
---no-open       do not open a browser
---since <days>  change the activity window (default: 90)
---site <url>    override the site URL
-```
+| Command | Does |
+|---|---|
+| `thetokentown` | `install` if hooks are not installed yet, otherwise `status` |
+| `thetokentown scan` | scan the sources and print a table; sends nothing |
+| `thetokentown --json` | print the exact Snapshot v2 a claim would carry; sends nothing |
+| `thetokentown claim` | scan and open `/claim#<snapshot>` in the browser; no token, no request |
+| `thetokentown login` | device flow; stores the hook token in `~/.thetokentown/config.json` (0600). `--token <t>` stores a token pasted from `/me` instead |
+| `thetokentown publish [--yes]` | scan, preview, confirm, then `POST /api/snapshot` with the token |
+| `thetokentown install` | `claim` → `login` → choose building → hooks, with the exact diff and a `[y/N]` per tool |
+| `thetokentown sync` | sync now, in the foreground |
+| `thetokentown sync --hook [--flush]` | what the hooks call — see below |
+| `thetokentown uninstall [--purge]` | remove only our hook entries; `--purge` also removes `~/.thetokentown` |
+| `thetokentown status` | sources, hooks, last sync, link |
+
+Global flags: `--json`, `--no-open`, `--since <days>` (default 90),
+`--site <url>` (or `THETOKENTOWN_SITE_URL`), `--demo`, `--yes`.
+
+## Hooks
+
+`install` keeps the building alive by asking the tools to run
+`thetokentown sync --hook` when a session ends. Every change is shown as a
+diff and confirmed per tool; the original file is kept next to it as
+`*.bak.thetokentown`, and `uninstall` puts it back.
+
+| Tool | File | Entry |
+|---|---|---|
+| Claude Code | `~/.claude/settings.json` | `hooks.Stop` and `hooks.SessionEnd` (`--flush`): `{ "type": "command", "command": "<abs> sync --hook", "async": true, "timeout": 10 }` |
+| Codex CLI | `~/.codex/config.toml` | `notify = ["<abs>", "sync", "--hook"]`. If a `notify` is already configured, a wrapper in `~/.thetokentown/bin` runs ours and then the previous one |
+| Grok CLI | — | rides along with the other hooks; a 15-minute schedule (launchd / cron / schtasks) is offered only when Grok is the sole source |
+
+Rules: absolute path to this binary, never `npx`; our entries are identified by
+the substring `thetokentown sync`; a file that does not parse is not touched;
+third-party hooks are preserved, and when the file was not edited since
+`install`, `uninstall` restores the pre-install bytes verbatim.
+
+`sync --hook` never makes the host tool wait: it reads stdin for at most
+200 ms (and ignores it, except `stop_hook_active`), checks the 10-minute
+throttle in `~/.thetokentown/last-sync`, hands off to a detached worker and
+exits 0 — always, whatever happens. The worker rescans only the sources whose
+files changed (per-file cursors in `state.json`; a corrupt state means a full
+rescan), posts the full snapshot with a 3-second timeout, and on any failure
+leaves it in `queue.json` for the next run. Everything is logged to
+`~/.thetokentown/hook.log`, rotated at 1 MB.
 
 ## Sources
 
@@ -63,8 +99,19 @@ enabled, is an estimate and is marked with an asterisk everywhere it appears.
 
 ## State
 
-One file, `~/.thetokentown/config.json` (mode 0600), holding one uuid so that
-two runs from the same computer are not counted as two buildings.
+Everything lives in `~/.thetokentown` (relocate it with `THETOKENTOWN_HOME`):
+
+| File | Holds |
+|---|---|
+| `config.json` (0600) | the machine uuid, the hook token, handle, site, building, what the hooks changed |
+| `state.json` | per-file cursors and the last scan of each source, for the incremental hook |
+| `queue.json` | a snapshot that could not be posted; retried by the next sync |
+| `last-sync` | the throttle stamp |
+| `hook.log`, `hook.log.1` | what the hooks did |
+| `bin/` | the Codex notify wrapper, when one was needed |
+
+On Windows the 0600 mode is not enforced by NTFS; the directory inherits the
+user profile's ACL instead.
 
 ## Development
 

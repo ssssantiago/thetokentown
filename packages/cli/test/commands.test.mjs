@@ -445,3 +445,211 @@ test("hook.log rotates past 1 MB", async () => {
   }
 });
 
+// ---------------------------------------------------------------- install
+
+/** A sandbox whose tool dirs carry the local hook fixtures. */
+function hookSandbox({ codexFixture = "codex-config.toml" } = {}) {
+  const box = sandbox({ copyTools: true });
+  writeFileSync(join(box.claude, "settings.json"), readFileSync(join(LOCAL, "claude-settings.json")));
+  writeFileSync(join(box.codex, "config.toml"), readFileSync(join(LOCAL, codexFixture)));
+  rmSync(box.grok, { recursive: true, force: true }); // Grok is not installed here
+  return box;
+}
+
+test("install wires Claude and Codex with a diff per tool, backs up, and uninstall restores byte-identical files", async () => {
+  const box = hookSandbox();
+  const server = await mockServer();
+  const settingsFile = join(box.claude, "settings.json");
+  const codexFile = join(box.codex, "config.toml");
+  const settingsBefore = readFileSync(settingsFile, "utf8");
+  const codexBefore = readFileSync(codexFile, "utf8");
+  try {
+    const result = await run(["install", "--yes", "--no-open", "--site", server.url, "--since", "365"], box.env);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.match(result.stdout, /logged in as @builder-01/);
+    assert.match(result.stdout, /Claude Code → .*settings\.json/);
+    assert.match(result.stdout, /Codex CLI → .*config\.toml/);
+    assert.match(result.stdout, /\+ .*sync --hook/, "the diff shows the added command");
+    assert.match(result.stdout, /Apply for Claude Code\? \[y\/N\] y/);
+    assert.match(result.stdout, /Apply for Codex CLI\? \[y\/N\] y/);
+    assert.match(result.stdout, /Restart Claude Code/);
+
+    // Claude: ours added, theirs untouched.
+    const settings = JSON.parse(readFileSync(settingsFile, "utf8"));
+    assert.deepEqual(settings.permissions, { allow: ["Bash(git status)"] });
+    assert.equal(settings.hooks.PreToolUse[0].hooks[0].command, "/usr/local/bin/some-linter --check");
+    assert.equal(settings.hooks.Stop[0].hooks[0].command, "/home/builder/bin/notify-me 'done'", "third-party Stop hook first, unchanged");
+    const ourStop = settings.hooks.Stop[1].hooks[0];
+    assert.equal(ourStop.type, "command");
+    assert.equal(ourStop.async, true);
+    assert.equal(ourStop.timeout, 10);
+    assert.match(ourStop.command, /thetokentown(\.mjs")? sync --hook$/);
+    assert.ok(ourStop.command.replace(/\\\\/g, "\\").includes(CLI), `absolute path to this very binary: ${ourStop.command}`);
+    assert.doesNotMatch(ourStop.command, /npx/);
+    const ourEnd = settings.hooks.SessionEnd[0].hooks[0];
+    assert.match(ourEnd.command, /sync --hook --flush$/);
+    assert.equal(readFileSync(`${settingsFile}.bak.thetokentown`, "utf8"), settingsBefore, "backup is the original");
+
+    // Codex: notify replaced by a wrapper that still calls the old command.
+    const codex = readFileSync(codexFile, "utf8");
+    assert.match(codex, /^notify = \[".*codex-notify\.(sh|cmd)"\] # thetokentown sync/m);
+    assert.doesNotMatch(codex, /^notify = \["\/opt\/notifiers/m);
+    assert.match(codex, /\[marketplaces\.example\]/, "the rest of the file is intact");
+    const wrapperPath = /^notify = \["(.*)"\]/m.exec(codex)[1].replace(/\\\\/g, "\\");
+    assert.ok(existsSync(wrapperPath), `wrapper exists at ${wrapperPath}`);
+    const wrapper = readFileSync(wrapperPath, "utf8");
+    assert.match(wrapper, /\/opt\/notifiers\/bin\/desktop-notify turn-ended/, "the previous notify is still called");
+    assert.match(wrapper, /sync --hook/);
+    assert.equal(readFileSync(`${codexFile}.bak.thetokentown`, "utf8"), codexBefore);
+
+    // config.json remembers enough to undo.
+    const config = box.json("config.json");
+    assert.equal(config.hooks.claude.file, settingsFile);
+    assert.match(config.hooks.codex.originalNotifyLine, /^notify = \["\/opt\/notifiers/);
+    assert.equal(config.hooks.codex.wrapper, wrapperPath);
+    assert.equal(config.hooks.grok, undefined);
+
+    // status sees them; the bare command now means status.
+    const status = await run(["status", "--json"], box.env);
+    assert.equal(status.status, 0);
+    assert.deepEqual(JSON.parse(status.stdout).hooks, { claude: true, codex: true, grok: false });
+    const bare = await run(["--no-open"], box.env);
+    assert.equal(bare.status, 0, bare.stderr);
+    assert.match(bare.stdout, /Hooks/);
+    assert.doesNotMatch(bare.stdout, /Apply for/);
+
+    // A second install is a no-op.
+    const again = await run(["install", "--yes", "--no-open", "--site", server.url, "--since", "365"], box.env);
+    assert.equal(again.status, 0, again.stderr);
+    assert.match(again.stdout, /Claude Code: already installed/);
+    assert.match(again.stdout, /Codex CLI: already installed/);
+
+    // Uninstall with the files untouched since install: byte-identical.
+    const removed = await run(["uninstall", "--yes"], box.env);
+    assert.equal(removed.status, 0, removed.stderr + removed.stdout);
+    assert.match(removed.stdout, /- .*sync --hook/);
+    assert.equal(readFileSync(settingsFile, "utf8"), settingsBefore, "settings.json restored byte for byte");
+    assert.equal(readFileSync(codexFile, "utf8"), codexBefore, "config.toml restored byte for byte");
+    assert.equal(existsSync(wrapperPath), false, "wrapper removed");
+    assert.equal(box.json("config.json").hooks, undefined);
+    assert.equal(box.json("config.json").token, "tok_test_123", "the token survives an uninstall without --purge");
+
+    const after = await run(["status", "--json"], box.env);
+    assert.deepEqual(JSON.parse(after.stdout).hooks, { claude: false, codex: false, grok: false });
+
+    // Install again, then edit both files by hand before uninstalling: now
+    // only our entries come out and the edits (and third-party hooks) stay.
+    const reinstall = await run(["install", "--yes", "--no-open", "--site", server.url, "--since", "365"], box.env);
+    assert.equal(reinstall.status, 0, reinstall.stderr + reinstall.stdout);
+    const edited = JSON.parse(readFileSync(settingsFile, "utf8"));
+    edited.hooks.Stop.push({ matcher: "", hooks: [{ type: "command", command: "/home/builder/bin/after-ours" }] });
+    edited.theme = "dark";
+    writeFileSync(settingsFile, `${JSON.stringify(edited, null, 2)}\n`);
+    writeFileSync(codexFile, `${readFileSync(codexFile, "utf8")}\n[added.by.hand]\nx = 1\n`);
+
+    const surgical = await run(["uninstall", "--yes"], box.env);
+    assert.equal(surgical.status, 0, surgical.stderr + surgical.stdout);
+    const left = JSON.parse(readFileSync(settingsFile, "utf8"));
+    assert.equal(left.theme, "dark");
+    assert.deepEqual(
+      left.hooks.Stop.map((group) => group.hooks.map((hook) => hook.command)),
+      [["/home/builder/bin/notify-me 'done'"], ["/home/builder/bin/after-ours"]],
+      "both third-party Stop hooks survive, in order, and ours is gone",
+    );
+    assert.equal(left.hooks.SessionEnd, undefined, "the key we created is removed when it is empty");
+    assert.equal(left.hooks.PreToolUse[0].hooks[0].command, "/usr/local/bin/some-linter --check");
+    const codexLeft = readFileSync(codexFile, "utf8");
+    assert.equal(codexLeft, `${codexBefore}\n[added.by.hand]\nx = 1\n`, "the original notify line is back and the edit stays");
+  } finally {
+    await server.close();
+    box.cleanup();
+  }
+});
+
+test("install on a Codex config without notify adds one line; on a fresh Claude it creates the file", async () => {
+  const box = hookSandbox({ codexFixture: "codex-config-plain.toml" });
+  rmSync(join(box.claude, "settings.json"));
+  const server = await mockServer();
+  const codexFile = join(box.codex, "config.toml");
+  const settingsFile = join(box.claude, "settings.json");
+  const codexBefore = readFileSync(codexFile, "utf8");
+  try {
+    const result = await run(["install", "--yes", "--no-open", "--site", server.url, "--since", "365"], box.env);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+
+    const codex = readFileSync(codexFile, "utf8");
+    assert.match(codex, /^model_reasoning_effort = "high"\nnotify = \[.*"sync", "--hook"\] # thetokentown sync\n\n\[plugins/m, "inserted after the last top-level key");
+    assert.equal(existsSync(join(box.home, "bin")), false, "no wrapper when there was nothing to wrap");
+
+    const settings = JSON.parse(readFileSync(settingsFile, "utf8"));
+    assert.equal(settings.hooks.Stop.length, 1);
+    assert.equal(settings.hooks.SessionEnd.length, 1);
+    assert.equal(existsSync(`${settingsFile}.bak.thetokentown`), false, "nothing to back up");
+
+    const removed = await run(["uninstall", "--yes", "--purge"], box.env);
+    assert.equal(removed.status, 0, removed.stderr + removed.stdout);
+    assert.equal(readFileSync(codexFile, "utf8"), codexBefore);
+    assert.equal(existsSync(settingsFile), false, "a file install created is removed again");
+    assert.equal(existsSync(box.home), false, "--purge removed the home");
+  } finally {
+    await server.close();
+    box.cleanup();
+  }
+});
+
+test("a config file that does not parse is refused and left untouched", async () => {
+  const box = hookSandbox();
+  const server = await mockServer();
+  const settingsFile = join(box.claude, "settings.json");
+  const codexFile = join(box.codex, "config.toml");
+  writeFileSync(settingsFile, '{ "hooks": { "Stop": [ }');
+  writeFileSync(codexFile, "model = \nthis is not toml\n");
+  try {
+    const result = await run(["install", "--yes", "--no-open", "--site", server.url, "--since", "365"], box.env);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.match(result.stdout, /settings\.json does not parse .*not touching it/);
+    assert.match(result.stdout, /config\.toml does not look like TOML .*not touching it/);
+    assert.equal(readFileSync(settingsFile, "utf8"), '{ "hooks": { "Stop": [ }');
+    assert.equal(readFileSync(codexFile, "utf8"), "model = \nthis is not toml\n");
+    assert.equal(existsSync(`${settingsFile}.bak.thetokentown`), false);
+    assert.equal(box.json("config.json").hooks, undefined);
+  } finally {
+    await server.close();
+    box.cleanup();
+  }
+});
+
+test("install stops before hooks when login fails, and says what to do", async () => {
+  const box = hookSandbox();
+  const server = await mockServer({ poll: "denied" });
+  const settingsFile = join(box.claude, "settings.json");
+  const before = readFileSync(settingsFile, "utf8");
+  try {
+    const result = await run(["install", "--yes", "--no-open", "--site", server.url, "--since", "365"], box.env);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /login failed/);
+    assert.match(result.stdout, /login --token/);
+    assert.equal(readFileSync(settingsFile, "utf8"), before);
+  } finally {
+    await server.close();
+    box.cleanup();
+  }
+});
+
+test("without a terminal and without --yes, install shows the diff and applies nothing", async () => {
+  const box = hookSandbox();
+  const server = await mockServer();
+  const settingsFile = join(box.claude, "settings.json");
+  const before = readFileSync(settingsFile, "utf8");
+  try {
+    const result = await run(["install", "--no-open", "--site", server.url, "--since", "365"], box.env);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /\+ .*sync --hook/);
+    assert.match(result.stdout, /\[y\/N\] N/);
+    assert.match(result.stdout, /Claude Code: skipped/);
+    assert.equal(readFileSync(settingsFile, "utf8"), before);
+  } finally {
+    await server.close();
+    box.cleanup();
+  }
+});

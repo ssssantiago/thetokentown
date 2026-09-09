@@ -1,0 +1,12 @@
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+
+# a notify that was here before us
+notify = ["/opt/notifiers/bin/desktop-notify", "turn-ended"]
+
+[marketplaces.example]
+source_type = "local"
+source = '/opt/marketplaces/example'
+
+[plugins."documents@example"]
+enabled = true

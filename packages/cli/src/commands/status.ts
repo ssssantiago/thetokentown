@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 
 import { resolveSite } from "../api.ts";
 import type { Flags } from "../flags.ts";
+import { installedHooks } from "../hooks/index.ts";
 import { CONFIG_FILE, LOG_FILE, QUEUE_FILE } from "../paths.ts";
 import { SOURCES } from "../sources.ts";
 import { lastSyncAt, readConfig, readQueue, readState, tailLog } from "../store.ts";
@@ -12,7 +13,7 @@ import { banner, bold, dim, green, relativeTime, underline, yellow } from "../ui
 export async function statusCommand(flags: Flags): Promise<number> {
   const config = readConfig();
   const site = resolveSite(flags.site ?? config.site);
-  const hooks = { claude: false, codex: false, grok: false }; // hook installers land in a later commit
+  const hooks = installedHooks();
   const state = readState();
   const last = lastSyncAt();
   const queue = readQueue();

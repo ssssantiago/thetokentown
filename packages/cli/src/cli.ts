@@ -53,11 +53,6 @@ Privacy: only per-day, per-provider, per-model token counts leave this
 machine. Prompts, responses, file names, paths and code never do. Run
 --json to read the payload before anything is sent.`;
 
-const notYet = (name: string): number => {
-  console.error(`${name} is not implemented yet on this branch`);
-  return 2;
-};
-
 async function main(): Promise<number> {
   const flags = parseArgs(process.argv.slice(2));
 
@@ -85,19 +80,21 @@ async function main(): Promise<number> {
     case "publish":
       return (await import("./commands/publish.ts")).publishCommand(flags);
     case "install":
-      return notYet("install");
+      return (await import("./commands/install.ts")).installCommand(flags);
     case "sync":
       if (flags.hook && !flags.worker) return (await import("./commands/hook.ts")).hookCommand(flags);
       return (await import("./commands/sync.ts")).syncCommand(flags);
     case "uninstall":
-      return notYet("uninstall");
+      return (await import("./commands/install.ts")).uninstallCommand(flags);
     case "status":
       return (await import("./commands/status.ts")).statusCommand(flags);
     case "default": {
       // `thetokentown --json` keeps meaning "the payload, sent nowhere".
       if (flags.json) return (await import("./commands/scan.ts")).scanCommand(flags);
-      // install lands with the hooks; until then the bare command is status.
-      return (await import("./commands/status.ts")).statusCommand(flags);
+      const { anyHookInstalled } = await import("./hooks/index.ts");
+      return anyHookInstalled()
+        ? (await import("./commands/status.ts")).statusCommand(flags)
+        : (await import("./commands/install.ts")).installCommand(flags);
     }
     default:
       return 2;
