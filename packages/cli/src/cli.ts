@@ -81,9 +81,9 @@ async function main(): Promise<number> {
     case "claim":
       return (await import("./commands/scan.ts")).claimCommand(flags);
     case "login":
-      return notYet("login");
+      return (await import("./commands/login.ts")).loginCommand(flags);
     case "publish":
-      return notYet("publish");
+      return (await import("./commands/publish.ts")).publishCommand(flags);
     case "install":
       return notYet("install");
     case "sync":
