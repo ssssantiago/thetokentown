@@ -530,6 +530,8 @@ test("install wires Claude and Codex with a diff per tool, backs up, and uninsta
     assert.match(removed.stdout, /- .*sync --hook/);
     assert.equal(readFileSync(settingsFile, "utf8"), settingsBefore, "settings.json restored byte for byte");
     assert.equal(readFileSync(codexFile, "utf8"), codexBefore, "config.toml restored byte for byte");
+    assert.equal(readFileSync(`${settingsFile}.bak.thetokentown`, "utf8"), settingsBefore, "uninstall leaves the pre-install backup alone");
+    assert.equal(readFileSync(`${codexFile}.bak.thetokentown`, "utf8"), codexBefore, "uninstall leaves the pre-install backup alone");
     assert.equal(existsSync(wrapperPath), false, "wrapper removed");
     assert.equal(box.json("config.json").hooks, undefined);
     assert.equal(box.json("config.json").token, "tok_test_123", "the token survives an uninstall without --purge");

@@ -117,10 +117,11 @@ export function fileText(file: string): string {
 }
 
 /**
- * Applies a plan: backup, extras, the file itself, removals. Returns the
- * backup path and any note the custom writer produced.
+ * Applies a plan: backup (on install only — the backup is the pre-install
+ * file, and an uninstall must not overwrite it), extras, the file itself,
+ * removals. Returns the backup path and any note the custom writer produced.
  */
-export function applyPlan(plan: HookPlan): { backup: string | null; note?: string } {
+export function applyPlan(plan: HookPlan, options: { backup: boolean }): { backup: string | null; note?: string } {
   let backup: string | null = null;
   for (const extra of plan.extras ?? []) {
     mkdirSync(dirname(extra.path), { recursive: true });
@@ -130,10 +131,10 @@ export function applyPlan(plan: HookPlan): { backup: string | null; note?: strin
   if (plan.write) {
     note = plan.write(plan.after);
   } else {
-    if (existsSync(plan.file)) {
+    if (existsSync(plan.file) && options.backup) {
       backup = backupPath(plan.file);
       copyFileSync(plan.file, backup);
-    } else {
+    } else if (!existsSync(plan.file)) {
       mkdirSync(dirname(plan.file), { recursive: true });
     }
     writeFileSync(plan.file, plan.after, "utf8");

@@ -60,7 +60,7 @@ async function runPlans(
       continue;
     }
     try {
-      const { backup, note } = applyPlan(plan);
+      const { backup, note } = applyPlan(plan, { backup: options.verb === "install" });
       options.onApplied(plan);
       const bits = [backup ? `backup ${backup}` : null, note ?? null].filter(Boolean).join("; ");
       console.log(`  ${green("✓")} ${plan.label}: ${options.verb === "install" ? "installed" : "removed"}${bits ? ` ${dim(`(${bits})`)}` : ""}`);
