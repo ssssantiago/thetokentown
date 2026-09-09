@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { gunzipSync, gzipSync } from "node:zlib";
@@ -9,19 +11,25 @@ const CLI = fileURLToPath(new URL("../dist/thetokentown.mjs", import.meta.url));
 const FIXTURES = fileURLToPath(new URL("../../../fixtures/", import.meta.url));
 const BASELINE = JSON.parse(readFileSync(new URL("../../../fixtures/v1-baseline.json", import.meta.url), "utf8"));
 
+/** A throwaway ~/.thetokentown so the suite never reads or writes the real one. */
+const HOME = mkdtempSync(join(tmpdir(), "thetokentown-scan-"));
+test.after(() => rmSync(HOME, { recursive: true, force: true }));
+
 /** Points every source at the committed fixtures, and pins the clock's zone. */
 const fixtureEnv = {
+  THETOKENTOWN_HOME: HOME,
   CLAUDE_CONFIG_DIR: `${FIXTURES}claude`,
   CODEX_HOME: `${FIXTURES}codex`,
   GROK_HOME: `${FIXTURES}grok`,
   THETOKENTOWN_CURSOR_LOG: `${FIXTURES}cursor/usage.jsonl`,
   TZ: "UTC",
+  NO_COLOR: "1",
 };
 
 function run(args, env = {}) {
   const result = spawnSync(process.execPath, [CLI, ...args], {
     encoding: "utf8",
-    env: { ...process.env, ...env },
+    env: { ...process.env, THETOKENTOWN_HOME: HOME, ...env },
   });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout;
@@ -114,7 +122,7 @@ test("--demo produces a stable payload without touching the machine", () => {
 });
 
 test("the human summary reports floors and value built, not spend", () => {
-  const out = run(["--demo", "--no-open", "--since", "30"]);
+  const out = run(["scan", "--demo", "--since", "30"]);
   assert.match(out, /THE TOKEN TOWN/);
   assert.match(out, /floors/);
   assert.match(out, /value built \(API pricing\)/);
@@ -122,13 +130,13 @@ test("the human summary reports floors and value built, not spend", () => {
 });
 
 test("the claim URL is printed without its fragment", () => {
-  const out = run(["--no-open", "--since", "365"], fixtureEnv);
+  const out = run(["claim", "--no-open", "--since", "365"], fixtureEnv);
   assert.match(out, /https:\/\/thetokentown\.dev\/claim/);
   assert.doesNotMatch(out, /\/claim#/, "the payload must not be pasted into the terminal");
 });
 
 test("--site overrides the destination", () => {
-  const out = run(["--no-open", "--site", "http://localhost:3000/", "--since", "365"], fixtureEnv);
+  const out = run(["claim", "--no-open", "--site", "http://localhost:3000/", "--since", "365"], fixtureEnv);
   assert.match(out, /http:\/\/localhost:3000\/claim/);
 });
 
@@ -148,7 +156,7 @@ test("the payload fits in a URL fragment, compressed, with room to spare", () =>
 });
 
 test("an empty window says so instead of opening a claim", () => {
-  const out = run(["--no-open", "--since", "1"], {
+  const out = run(["claim", "--no-open", "--since", "1"], {
     CLAUDE_CONFIG_DIR: `${FIXTURES}nowhere`,
     CODEX_HOME: `${FIXTURES}nowhere`,
     GROK_HOME: `${FIXTURES}nowhere`,
@@ -160,6 +168,25 @@ test("an empty window says so instead of opening a claim", () => {
 });
 
 test("--help and --version answer without scanning", () => {
-  assert.match(run(["--help"]), /npx thetokentown/);
+  assert.match(run(["--help"]), /thetokentown install/);
+  assert.match(run(["--help"]), /thetokentown sync --hook/);
   assert.match(run(["--version"]), /^\d+\.\d+\.\d+/);
+});
+
+test("scan prints the table, sends nothing, and scan --json is the same payload as --json", () => {
+  const out = run(["scan", "--since", "365"], fixtureEnv);
+  assert.match(out, /THE TOKEN TOWN/);
+  assert.match(out, /Nothing was sent/);
+  assert.doesNotMatch(out, /\/claim/);
+
+  const viaScan = JSON.parse(run(["scan", "--json", "--since", "365"], fixtureEnv));
+  const viaFlag = JSON.parse(run(["--json", "--since", "365"], fixtureEnv));
+  assert.deepEqual(viaScan.daily, viaFlag.daily);
+  assert.equal(viaScan.source, "claim");
+});
+
+test("an unknown argument is an error, not a scan", () => {
+  const result = spawnSync(process.execPath, [CLI, "--bogus"], { encoding: "utf8", env: { ...process.env, THETOKENTOWN_HOME: HOME } });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /unknown argument: --bogus/);
 });
